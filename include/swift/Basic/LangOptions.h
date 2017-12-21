@@ -332,6 +332,8 @@ namespace swift {
       } else if (Target.isOSLinux() || Target.isOSFreeBSD() ||
                  Target.isAndroid() || Target.isOSWindows() ||
                  Target.isPS4() || Target.isOSHaiku() ||
+                 Target.getArch() == llvm::Triple::wasm32 ||
+                 Target.getArch() == llvm::Triple::wasm64 ||
                  Target.getTriple().empty()) {
         major = minor = revision = 0;
       } else {
