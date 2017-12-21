@@ -120,6 +120,7 @@ KNOWN_SETTINGS=(
     skip-build-watchos-device   ""               "set to skip building Swift stdlibs for Apple watchOS devices (i.e. build simulators only)"
     skip-build-watchos-simulator ""              "set to skip building Swift stdlibs for Apple watchOS simulators (i.e. build devices only)"
     skip-build-android          ""               "set to skip building Swift stdlibs for Android"
+    skip-build-webassembly      ""               "set to skip building Swift stdlibs for WebAssembly"
     skip-build-lldb             ""               "set to skip building LLDB"
     skip-build-llbuild          ""               "set to skip building llbuild"
     skip-build-swiftpm          ""               "set to skip building swiftpm"
@@ -426,6 +427,18 @@ function set_build_options_for_host() {
             SWIFT_HOST_VARIANT_SDK="HAIKU"
             SWIFT_HOST_VARIANT_ARCH="x86_64"
             ;;
+        webassembly-*)
+            SWIFT_HOST_VARIANT="webassembly"
+            SWIFT_HOST_VARIANT_SDK="WEBASSEMBLY"
+            case ${host} in
+                webassembly-wasm32)
+                    SWIFT_HOST_VARIANT_ARCH="wasm32"
+                    ;;
+                WebAssembly-wasm64)
+                    SWIFT_HOST_VARIANT_ARCH="wasm64"
+                    ;;
+                esac
+        ;;
         linux-*)
             SWIFT_HOST_VARIANT="linux"
             SWIFT_HOST_VARIANT_SDK="LINUX"
@@ -1015,7 +1028,7 @@ function make_relative_symlink() {
 CROSS_COMPILE_HOSTS=($CROSS_COMPILE_HOSTS)
 for t in "${CROSS_COMPILE_HOSTS[@]}"; do
     case ${t} in
-        iphone* | appletv* | watch* | linux-armv6 | linux-armv7 )
+        iphone* | appletv* | watch* | linux-armv6 | linux-armv7 | webassembly-*)
             ;;
         *)
             echo "Unknown host to cross-compile for: ${t}"
@@ -1380,6 +1393,11 @@ function calculate_targets_for_host() {
                 build_for_this_target=$(not ${SKIP_BUILD_ANDROID})
                 test_this_target=$(not ${SKIP_TEST_ANDROID_HOST})
                 ;;
+            webassembly-*)
+                swift_sdk="WEBASSEMBLY"
+                build_for_this_target=$(not ${SKIP_BUILD_WEBASSEMBLY})
+                test_this_target=$(not ${SKIP_TEST_WEBASSEMBLY})
+                ;;    
             *)
                 echo "Unknown compiler deployment target: ${stdlib_deployment_target}"
                 exit 1
@@ -1891,6 +1909,7 @@ for host in "${ALL_HOSTS[@]}"; do
             common_cmake_options_host+=(
                 -DCMAKE_C_COMPILER="$(build_directory ${LOCAL_HOST} llvm)/bin/clang"
                 -DCMAKE_CXX_COMPILER="$(build_directory ${LOCAL_HOST} llvm)/bin/clang++"
+                -DCMAKE_RANLIB="$(build_directory ${LOCAL_HOST} llvm)/bin/llvm-ranlib"
             )
         fi
 
@@ -2085,6 +2104,14 @@ for host in "${ALL_HOSTS[@]}"; do
                     )
                 fi
 
+                # LLVM WebAssembly is currently disabled by default. Enabled it.
+                if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    cmake_options=(
+                        "${cmake_options[@]}"
+                        -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD:STRING="WebAssembly"
+                    )
+                fi
+
                 ;;
 
             swift)
@@ -2153,6 +2180,12 @@ for host in "${ALL_HOSTS[@]}"; do
                         "${cmake_options[@]}"
                         -DLLVM_TOOLS_BINARY_DIR:PATH=/tmp/dummy
                     )
+                else
+                    cmake_options=(
+                        "${cmake_options[@]}"
+                        -DCMAKE_AR:PATH=$(build_directory "${LOCAL_HOST}" llvm)/bin/llvm-ar
+                        -DCMAKE_RANLIB:PATH=$(build_directory "${LOCAL_HOST}" llvm)/bin/llvm-ranlib
+                    )                    
                 fi
 
                 if [ "${HOST_LIPO}" ] ; then
@@ -2653,6 +2686,7 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DCMAKE_BUILD_TYPE:STRING="${LIBDISPATCH_BUILD_TYPE}"
                     -DCMAKE_C_COMPILER:PATH="${LLVM_BIN}/clang"
                     -DCMAKE_CXX_COMPILER:PATH="${LLVM_BIN}/clang++"
+                    -DCMAKE_RANLIB:PATH="${LLVM_BIN}/llvm-ranlib"
                     -DCMAKE_SWIFT_COMPILER:PATH="${SWIFTC_BIN}"
                     -DCMAKE_INSTALL_PREFIX:PATH="$(get_host_install_prefix ${host})"
                     -DCMAKE_INSTALL_LIBDIR:PATH="lib"

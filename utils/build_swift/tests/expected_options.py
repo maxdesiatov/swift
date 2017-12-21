@@ -438,6 +438,7 @@ EXPECTED_OPTIONS = [
     EnableOption('--validation-test'),
     EnableOption('--verbose-build'),
     EnableOption('--watchos'),
+    EnableOption('--webassembly'),
     EnableOption('--xctest', dest='build_xctest'),
 
     DisableOption('--skip-build-android', dest='build_android'),
@@ -459,6 +460,7 @@ EXPECTED_OPTIONS = [
                   dest='build_watchos_device'),
     DisableOption('--skip-build-watchos-simulator',
                   dest='build_watchos_simulator'),
+    DisableOption('--skip-build-webassembly', dest='build_webassembly'),
     DisableOption('--skip-test-android-host', dest='test_android_host'),
     DisableOption('--skip-test-cygwin', dest='test_cygwin'),
     DisableOption('--skip-test-freebsd', dest='test_freebsd'),

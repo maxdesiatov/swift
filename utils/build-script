@@ -305,6 +305,9 @@ class BuildScriptInvocation(object):
             args.android = True
             args.build_android = False
 
+        if args.webassembly:
+            args.stdlib_deployment_targets.append(
+                StdlibDeploymentTarget.WebAssembly.wasm32.name)
 # ---
 
     def __init__(self, toolchain, args):
@@ -347,6 +350,8 @@ class BuildScriptInvocation(object):
                 StdlibDeploymentTarget.AppleWatchSimulator)
         if not args.build_android:
             self.platforms_to_skip_build.add(StdlibDeploymentTarget.Android)
+        if not args.build_webassembly:
+            self.platforms_to_skip_build.add(StdlibDeploymentTarget.WebAssembly)
 
         self.platforms_to_skip_test = set()
         self.platforms_archs_to_skip_test = set()

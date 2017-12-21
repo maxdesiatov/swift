@@ -138,6 +138,7 @@ def _apply_default_arguments(args):
         args.build_tvos = False
         args.build_watchos = False
         args.build_android = False
+        args.build_webassembly = False
         args.build_benchmarks = False
         args.build_external_benchmarks = False
         args.build_lldb = False
@@ -175,6 +176,9 @@ def _apply_default_arguments(args):
             elif path.startswith('validation-test'):
                 args.test = True
                 args.validation_test = True
+
+    if not args.webassembly or not args.build_webassembly:
+        args.build_webassembly = False
 
     # --validation-test implies --test.
     if args.validation_test:
@@ -309,6 +313,9 @@ def create_argument_parser():
 
     option('--android', toggle_true,
            help='also build for Android')
+
+    option('--webassembly', toggle_true,
+           help='also build for WebAssembly')
 
     option('--swift-analyze-code-coverage', store,
            choices=['false', 'not-merged', 'merged'],
@@ -815,6 +822,9 @@ def create_argument_parser():
 
     option('--skip-build-android', toggle_false('build_android'),
            help='skip building Swift stdlibs for Android')
+
+    option('--skip-build-webassembly', toggle_false('build_webassembly'),
+           help='skip building Swift stdlibs for WebAssembly')
 
     option('--skip-build-benchmarks', toggle_false('build_benchmarks'),
            help='skip building Swift Benchmark Suite')

@@ -131,6 +131,8 @@ class StdlibDeploymentTarget(object):
 
     Haiku = Platform("haiku", archs=["x86_64"])
 
+    WebAssembly = Platform("webassembly", archs=["wasm32", "wasm64"])
+
     # The list of known platforms.
     known_platforms = [
         OSX,
@@ -142,7 +144,8 @@ class StdlibDeploymentTarget(object):
         Cygwin,
         Android,
         Windows,
-        Haiku]
+        Haiku,
+        WebAssembly]
 
     # Cache of targets by name.
     _targets_by_name = dict((target.name, target)

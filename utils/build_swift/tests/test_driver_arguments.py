@@ -624,6 +624,11 @@ class TestDriverArgumentParser(unittest.TestCase):
             self.assertFalse(namespace.test_watchos_host)
             self.assertFalse(namespace.test_watchos_simulator)
 
+    def test_implied_defaults_skip_build_webassembly(self):
+        with self.assertNotRaises(ParserError):
+            namespace = self.parse_default_args(['--skip-build-webassembly'])
+            self.assertFalse(namespace.build_webassembly)
+
     def test_implied_defaults_validation_test(self):
         with self.assertNotRaises(ParserError):
             namespace = self.parse_default_args(['--validation-test'])
