@@ -706,6 +706,7 @@ function set_build_options_for_host() {
     llvm_cmake_options+=(
         -DLLVM_TOOL_COMPILER_RT_BUILD:BOOL="$(false_true ${SKIP_BUILD_COMPILER_RT})"
         -DLLVM_BUILD_EXTERNAL_COMPILER_RT:BOOL="$(false_true ${SKIP_BUILD_COMPILER_RT})"
+        -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY:BOOL="OFF"
     )
 
     # If we are asked to not generate test targets for LLVM and or Swift,
@@ -2131,6 +2132,18 @@ for host in "${ALL_HOSTS[@]}"; do
                     )
                 fi
 
+                if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    cmake_options=(
+                        "${cmake_options[@]}"
+                        # HACK
+                        -DSWIFT_WEBASSEMBLY_ICU_UC:STRING="icuuc"
+                        -DSWIFT_WEBASSEMBLY_ICU_UC_INCLUDE:STRING="/Users/pcheng/github/swift-source/build-icu/build/tmp_install/include"
+                        -DSWIFT_WEBASSEMBLY_ICU_I18N:STRING="icui18n"
+                        -DSWIFT_WEBASSEMBLY_ICU_I18N_INCLUDE:STRING="/Users/pcheng/github/swift-source/build-icu/build/tmp_install/include"
+                        -DSWIFT_WEBASSEMBLY_ICU_STATICLIB:BOOL=true
+                    )
+                fi
+
                 if [[ "${DARWIN_OVERLAY_TARGET}" != "" ]]; then
                     # Split LOCAL_HOST into a pair ``arch-sdk``
                     # Example LOCAL_HOST: macosx-x86_64
@@ -2217,7 +2230,7 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DSWIFT_NATIVE_CLANG_TOOLS_PATH:STRING="${native_clang_tools_path}"
                     -DSWIFT_NATIVE_SWIFT_TOOLS_PATH:STRING="${native_swift_tools_path}"
                     -DSWIFT_INCLUDE_TOOLS:BOOL=$(true_false "${BUILD_SWIFT_TOOLS}")
-                    -DSWIFT_BUILD_REMOTE_MIRROR:BOOL=$(true_false "${BUILD_SWIFT_REMOTE_MIRROR}")
+                    -DSWIFT_BUILD_REMOTE_MIRROR:BOOL=FALSE # $(true_false "${BUILD_SWIFT_REMOTE_MIRROR}")
                     -DSWIFT_STDLIB_SIL_DEBUGGING:BOOL=$(true_false "${BUILD_SIL_DEBUGGING_STDLIB}")
                     -DSWIFT_CHECK_INCREMENTAL_COMPILATION:BOOL=$(true_false "${CHECK_INCREMENTAL_COMPILATION}")
                     -DSWIFT_REPORT_STATISTICS:BOOL=$(true_false "${REPORT_STATISTICS}")
