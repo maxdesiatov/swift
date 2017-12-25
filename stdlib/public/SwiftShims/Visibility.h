@@ -76,7 +76,7 @@
 
 # define SWIFT_EXPORT_ATTRIBUTE __attribute__((__visibility__("default")))
 
-#elif defined(__ELF__)
+#elif defined(__ELF__) || defined(__wasm__)
 
 // We make assumptions that the runtime and standard library can refer to each
 // other's symbols as DSO-local, which means we can't allow the dynamic linker

@@ -13,7 +13,7 @@
 import SwiftPrivate
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
 import Glibc
 #endif
 
@@ -28,7 +28,7 @@ import Glibc
 
 // FIXME: Come up with a better way to deal with APIs that are pointers on some
 // platforms but not others.
-#if os(Linux)
+#if os(Linux) || os(WebAssembly)
 typealias _stdlib_posix_spawn_file_actions_t = posix_spawn_file_actions_t
 #else
 typealias _stdlib_posix_spawn_file_actions_t = posix_spawn_file_actions_t?
@@ -224,7 +224,7 @@ public func spawnChild(_ args: [String])
 }
 
 #if !os(Android) && !os(Haiku)
-#if os(Linux)
+#if os(Linux) || os(WebAssembly)
 internal func _make_posix_spawn_file_actions_t()
   -> _stdlib_posix_spawn_file_actions_t {
   return posix_spawn_file_actions_t()

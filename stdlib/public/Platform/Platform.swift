@@ -348,6 +348,12 @@ public var SIG_IGN: _crt_signal_t {
 public var SIG_ERR: _crt_signal_t {
   return unsafeBitCast(-1, to: _crt_signal_t.self)
 }
+#elseif os(WebAssembly)
+public var SIG_DFL: sig_t? { return nil }
+public var SIG_ERR: sig_t? { return unsafeBitCast(-1, to: sig_t.self) }
+public var SIG_IGN: sig_t? { return unsafeBitCast(1, to: sig_t.self) }
+public var SIG_HOLD: sig_t? { return unsafeBitCast(2, to: sig_t.self) }
+
 #else
 internal var _ignore = _UnsupportedPlatformError()
 #endif
@@ -362,7 +368,7 @@ public var SEM_FAILED: UnsafeMutablePointer<sem_t>? {
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
   // The value is ABI.  Value verified to be correct for OS X, iOS, watchOS, tvOS.
   return UnsafeMutablePointer<sem_t>(bitPattern: -1)
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
   // The value is ABI.  Value verified to be correct on Glibc.
   return UnsafeMutablePointer<sem_t>(bitPattern: 0)
 #else

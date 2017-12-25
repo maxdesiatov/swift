@@ -17,7 +17,7 @@ import SwiftPrivateLibcExtras
 
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
 import Glibc
 #endif
 
@@ -1585,6 +1585,7 @@ public enum OSVersion : CustomStringConvertible {
   case windowsCygnus
   case windows
   case haiku
+  case webAssembly
 
   public var description: String {
     switch self {
@@ -1616,6 +1617,8 @@ public enum OSVersion : CustomStringConvertible {
       return "Windows"
     case .haiku:
       return "Haiku"
+    case .webAssembly:
+      return "WebAssembly"
     }
   }
 }
@@ -1660,6 +1663,8 @@ func _getOSVersion() -> OSVersion {
   return .windows
 #elseif os(Haiku)
   return .haiku
+#elseif os(WebAssembly)
+  return .webAssembly
 #else
   let productVersion = _getSystemVersionPlistProperty("ProductVersion")!
   let (major, minor, bugFix) = _parseDottedVersionTriple(productVersion)
@@ -1743,6 +1748,8 @@ public enum TestRunPredicate : CustomStringConvertible {
   case windowsCygnusAny(reason: String)
 
   case haikuAny(reason: String)
+
+  case webAssemblyAny(reason: String)
 
   case objCRuntime(/*reason:*/ String)
   case nativeRuntime(/*reason:*/ String)
@@ -1838,6 +1845,9 @@ public enum TestRunPredicate : CustomStringConvertible {
 
     case .haikuAny(reason: let reason):
       return "haikuAny(*, reason: \(reason))"
+
+    case .webAssemblyAny(reason: let reason):
+      return "webAssemblyAny(*, reason: \(reason))"
 
     case .objCRuntime(let reason):
       return "Objective-C runtime, reason: \(reason))"
@@ -2125,6 +2135,14 @@ public enum TestRunPredicate : CustomStringConvertible {
     case .haikuAny:
       switch _getRunningOSVersion() {
       case .haiku:
+        return true
+      default:
+        return false
+      }
+
+    case .webAssemblyAny:
+      switch _getRunningOSVersion() {
+      case .webAssembly:
         return true
       default:
         return false
