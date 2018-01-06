@@ -113,13 +113,11 @@ void IRGenModule::setTrueConstGlobal(llvm::GlobalVariable *var) {
     var->setSection("__TEXT,__const");
     break;
   case llvm::Triple::ELF:
+  case llvm::Triple::Wasm:
     var->setSection(".rodata");
     break;
   case llvm::Triple::COFF:
     var->setSection(".rdata");
-    break;
-  case llvm::Triple::Wasm:
-    var->setSection(".rodata");
     break;
   }
 }
