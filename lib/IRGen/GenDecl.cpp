@@ -895,7 +895,7 @@ std::string IRGenModule::GetObjCSectionName(StringRef Section,
   case llvm::Triple::COFF:
     return ("." + Section.substr(2) + "$B").str();
   case llvm::Triple::Wasm:
-    error(SourceLoc(), "wasm is not a supported object file format");
+    return  Section.substr(2).str();
   }
 
   llvm_unreachable("unexpected object file format");
@@ -926,7 +926,6 @@ void IRGenModule::SetCStringLiteralSection(llvm::GlobalVariable *GV,
   case llvm::Triple::COFF:
     return;
   case llvm::Triple::Wasm:
-    error(SourceLoc(), "wasm is not a supported object file format");
     return;
   }
 
@@ -2691,6 +2690,9 @@ llvm::Constant *IRGenModule::emitSwiftProtocols() {
   case llvm::Triple::COFF:
     sectionName = ".sw5prt$B";
     break;
+  case llvm::Triple::Wasm:
+    sectionName = "swift5_protocols";
+    break;
   default:
     llvm_unreachable("Don't know how to emit protocols for "
                      "the selected object format.");
@@ -2764,6 +2766,9 @@ llvm::Constant *IRGenModule::emitProtocolConformances() {
   case llvm::Triple::COFF:
     sectionName = ".sw5prtc$B";
     break;
+  case llvm::Triple::Wasm:
+    sectionName = "swift2_protocol_conformances";
+    break;
   default:
     llvm_unreachable("Don't know how to emit protocol conformances for "
                      "the selected object format.");
@@ -2790,6 +2795,9 @@ llvm::Constant *IRGenModule::emitTypeMetadataRecords() {
     break;
   case llvm::Triple::COFF:
     sectionName = ".sw5tymd$B";
+    break;
+  case llvm::Triple::Wasm:
+    sectionName = "swift2_type_metadata";
     break;
   default:
     llvm_unreachable("Don't know how to emit type metadata table for "
