@@ -106,10 +106,16 @@ void PrintingDiagnosticConsumer::handleDiagnostic(
   const llvm::SourceMgr &rawSM = SM.getLLVMSourceMgr();
   
   // Actually substitute the diagnostic arguments into the diagnostic text.
-  llvm::SmallString<256> Text;
+  llvm::SmallString<4096> Text;
   {
     llvm::raw_svector_ostream Out(Text);
-    DiagnosticEngine::formatDiagnosticText(Out, FormatString, FormatArgs);
+
+    assert(FormatString.size() < 4096 && "buffer overflow");
+    if (FormatArgs.empty()) {
+      Out << FormatString;
+    } else {
+      DiagnosticEngine::formatDiagnosticText(Out, FormatString, FormatArgs);
+    }
   }
   
   auto Msg = SM.GetMessage(Loc, SMKind, Text, Ranges, FixIts);
