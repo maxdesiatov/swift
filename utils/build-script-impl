@@ -1215,6 +1215,30 @@ if [ -e "${WORKSPACE}/compiler-rt" ] ; then
     fi
 fi
 
+# Symlink libcxx into the llvm tree, if it exists.
+LIBCXX_SOURCE_DIR="${LLVM_SOURCE_DIR}/projects/libcxx"
+if [ -e "${WORKSPACE}/libcxx" ] ; then
+    if [ ! -d "${LIBCXX_SOURCE_DIR}" ] ; then
+        make_relative_symlink "${WORKSPACE}/libcxx" "${LIBCXX_SOURCE_DIR}"
+    fi
+fi
+
+# Symlink libcxxabi into the llvm tree, if it exists.
+LIBCXXABI_SOURCE_DIR="${LLVM_SOURCE_DIR}/projects/libcxxabi"
+if [ -e "${WORKSPACE}/libcxxabi" ] ; then
+    if [ ! -d "${LIBCXXABI_SOURCE_DIR}" ] ; then
+        make_relative_symlink "${WORKSPACE}/libcxxabi" "${LIBCXXABI_SOURCE_DIR}"
+    fi
+fi
+
+# Symlink lld into the llvm tree, if it exists.
+LLD_SOURCE_DIR="${LLVM_SOURCE_DIR}/tools/lld"
+if [ -e "${WORKSPACE}/lld" ] ; then
+    if [ ! -d "${LLD_SOURCE_DIR}" ] ; then
+        make_relative_symlink "${WORKSPACE}/tools/lld" "${LLD_SOURCE_DIR}"
+    fi
+fi
+
 PRODUCTS=(cmark llvm)
 if [[ ! "${SKIP_BUILD_LIBICU}" ]] ; then
      PRODUCTS=("${PRODUCTS[@]}" libicu)
