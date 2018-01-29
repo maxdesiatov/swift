@@ -56,6 +56,7 @@ set(swift_runtime_sources
     ImageInspectionMachO.cpp
     ImageInspectionELF.cpp
     ImageInspectionCOFF.cpp
+    ImageInspectionWASM.cpp
     KnownMetadata.cpp
     LLVMSupport.cpp
     Metadata.cpp
@@ -91,6 +92,7 @@ set(LLVM_OPTIONAL_SOURCES
     StaticBinaryELF.cpp
     SwiftRT-COFF.cpp
     SwiftRT-ELF.cpp
+    SwiftRT-WASM.cpp
     ${swift_runtime_sources}
     ${swift_runtime_objc_sources}
     ${swift_runtime_leaks_sources})
@@ -179,11 +181,14 @@ add_swift_target_library(swiftRuntime OBJECT_LIBRARY TARGET_LIBRARY
 
 set(ELFISH_SDKS)
 set(COFF_SDKS)
+set(WASM_SDKS)
 foreach(sdk ${SWIFT_CONFIGURED_SDKS})
   if("${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "ELF")
     list(APPEND ELFISH_SDKS ${sdk})
   elseif("${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "COFF")
     list(APPEND COFF_SDKS ${sdk})
+  elseif("${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "WASM")
+    list(APPEND WASM_SDKS ${sdk})
   endif()
 endforeach()
 
@@ -203,6 +208,13 @@ add_swift_target_library(swiftImageRegistrationObjectCOFF
                   LINK_FLAGS ${SWIFT_RUNTIME_CORE_LINK_FLAGS}
                   TARGET_SDKS ${COFF_SDKS}
                   INSTALL_IN_COMPONENT none)
+add_swift_library(swiftImageRegistrationObjectWASM
+                  OBJECT_LIBRARY IS_STDLIB IS_STDLIB_CORE
+                  SwiftRT-WASM.cpp
+                  C_COMPILE_FLAGS ${SWIFT_RUNTIME_CORE_CXX_FLAGS}
+                  LINK_FLAGS ${SWIFT_RUNTIME_CORE_LINK_FLAGS}
+                  TARGET_SDKS ${WASM_SDKS}
+                  INSTALL_IN_COMPONENT none)
 
 foreach(sdk ${SWIFT_CONFIGURED_SDKS})
   foreach(arch ${SWIFT_SDK_${sdk}_ARCHITECTURES})
@@ -210,7 +222,8 @@ foreach(sdk ${SWIFT_CONFIGURED_SDKS})
     set(arch_suffix "${SWIFT_SDK_${sdk}_LIB_SUBDIR}-${arch}")
 
     if("${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "ELF" OR
-       "${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "COFF")
+       "${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "COFF" OR
+       "${SWIFT_SDK_${sdk}_OBJECT_FORMAT}" STREQUAL "WASM")
       # TODO(compnerd) switch to the generator expression when cmake is upgraded
       # to a version which supports it.
       # set(swiftrtObject "$<TARGET_OBJECTS:swiftImageRegistrationObject${SWIFT_SDK_${sdk}_OBJECT_FORMAT}-${arch_suffix}>")
