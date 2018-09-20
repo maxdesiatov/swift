@@ -706,7 +706,6 @@ function set_build_options_for_host() {
     llvm_cmake_options+=(
         -DLLVM_TOOL_COMPILER_RT_BUILD:BOOL="$(false_true ${SKIP_BUILD_COMPILER_RT})"
         -DLLVM_BUILD_EXTERNAL_COMPILER_RT:BOOL="$(false_true ${SKIP_BUILD_COMPILER_RT})"
-        -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY:BOOL="OFF"
     )
 
     # If we are asked to not generate test targets for LLVM and or Swift,
@@ -2254,7 +2253,7 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DSWIFT_NATIVE_CLANG_TOOLS_PATH:STRING="${native_clang_tools_path}"
                     -DSWIFT_NATIVE_SWIFT_TOOLS_PATH:STRING="${native_swift_tools_path}"
                     -DSWIFT_INCLUDE_TOOLS:BOOL=$(true_false "${BUILD_SWIFT_TOOLS}")
-                    -DSWIFT_BUILD_REMOTE_MIRROR:BOOL=FALSE # $(true_false "${BUILD_SWIFT_REMOTE_MIRROR}")
+                    -DSWIFT_BUILD_REMOTE_MIRROR:BOOL=$(true_false "${BUILD_SWIFT_REMOTE_MIRROR}")
                     -DSWIFT_STDLIB_SIL_DEBUGGING:BOOL=$(true_false "${BUILD_SIL_DEBUGGING_STDLIB}")
                     -DSWIFT_CHECK_INCREMENTAL_COMPILATION:BOOL=$(true_false "${CHECK_INCREMENTAL_COMPILATION}")
                     -DSWIFT_REPORT_STATISTICS:BOOL=$(true_false "${REPORT_STATISTICS}")
@@ -2884,12 +2883,9 @@ for host in "${ALL_HOSTS[@]}"; do
             # Find the path in which the local clang build is expecting to find
             # the c++ header files.
             BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include"
-            # if the folder is already there, 
-            # the local LLVM was built with libcxx, no need to create the symlink
-            if [ ! -d "${BUILT_CXX_INCLUDE_DIR/c++}" ] ; then
-                echo "symlinking the system headers ($HOST_CXX_HEADERS_DIR) into the local clang build directory ($BUILT_CXX_INCLUDE_DIR)."
-                call ln -s -f "$HOST_CXX_HEADERS_DIR" "$BUILT_CXX_INCLUDE_DIR"
-            fi
+
+            echo "symlinking the system headers ($HOST_CXX_HEADERS_DIR) into the local clang build directory ($BUILT_CXX_INCLUDE_DIR)."
+            call ln -s -f "$HOST_CXX_HEADERS_DIR" "$BUILT_CXX_INCLUDE_DIR"
         fi
 
         # Build.
