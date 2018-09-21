@@ -36,12 +36,14 @@
 ///
 //===----------------------------------------------------------------------===//
 
+#if os(WebAssembly)
+
 import SwiftPrivate
 import SwiftPrivateLibcExtras
 import SwiftPrivatePthreadExtras
 #if os(macOS) || os(iOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
 import Glibc
 #endif
 
@@ -529,7 +531,7 @@ class _InterruptibleSleep {
       return
     }
 
-    var timeout = timeval(tv_sec: time_t(duration), tv_usec: 0)
+    var timeout = timeval(tv_sec: duration, tv_usec: 0)
 
     var readFDs = _stdlib_fd_set()
     var writeFDs = _stdlib_fd_set()
@@ -717,3 +719,4 @@ public func runRaceTest(
     timeoutInSeconds: timeoutInSeconds, threads: threads)
 }
 
+#endif

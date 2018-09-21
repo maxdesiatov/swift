@@ -947,7 +947,7 @@ std::string IRGenModule::GetObjCSectionName(StringRef Section,
   case llvm::Triple::COFF:
     return ("." + Section.substr(2) + "$B").str();
   case llvm::Triple::Wasm:
-    return  Section.substr(2).str();
+    return Section.substr(2).str();
   }
 
   llvm_unreachable("unexpected object file format");

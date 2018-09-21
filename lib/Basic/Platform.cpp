@@ -114,8 +114,6 @@ static StringRef getPlatformNameForDarwin(const DarwinPlatformKind platform) {
 }
 
 StringRef swift::getPlatformNameForTriple(const llvm::Triple &triple) {
-
-
   switch (triple.getOS()) {
   case llvm::Triple::UnknownOS:
     switch(triple.getArch()) {
