@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// posix_spawn is not available on Android or Windows (MSVC).
+// posix_spawn is not available on Android, Windows (MSVC) or WebAssembly
 #if !defined(__ANDROID__) && !defined(__HAIKU__) && (!defined(_WIN32) || defined(__CYGWIN__)) && !defined(__wasm__)
 
 #include "swift/Runtime/Config.h"

@@ -208,7 +208,7 @@ module SwiftGlibc [system] {
     }
 % end
 
-% if CMAKE_SDK in ["LINUX", "FREEBSD", "CYGWIN", "WEBASSEMBLY"]:
+% if CMAKE_SDK in ["LINUX", "FREEBSD", "CYGWIN"]:
     module ftw {
       header "${GLIBC_INCLUDE_PATH}/ftw.h"
       export *
