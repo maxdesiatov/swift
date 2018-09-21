@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WebAssembly)
 
 import SwiftPrivate
 import SwiftPrivatePthreadExtras
@@ -2909,3 +2910,5 @@ public func expectEqualUnicodeScalars<S: StringProtocol>(
       stackTrace: stackTrace.pushIf(showFrame, file: file, line: line))
   }
 }
+
+#endif // !os(WebAssembly)

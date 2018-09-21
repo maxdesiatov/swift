@@ -15,9 +15,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WebAssembly)
+
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
 import Glibc
 #endif
 
@@ -146,3 +148,5 @@ public class _stdlib_Barrier {
     }
   }
 }
+
+#endif // !os(WebAssembly)

@@ -2155,18 +2155,6 @@ for host in "${ALL_HOSTS[@]}"; do
                     )
                 fi
 
-                if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
-                    cmake_options=(
-                        "${cmake_options[@]}"
-                        # HACK
-                        -DSWIFT_WEBASSEMBLY_ICU_UC:STRING="icuuc"
-                        -DSWIFT_WEBASSEMBLY_ICU_UC_INCLUDE:STRING="/Users/pcheng/github/swift-source/build-icu/build/tmp_install/include"
-                        -DSWIFT_WEBASSEMBLY_ICU_I18N:STRING="icui18n"
-                        -DSWIFT_WEBASSEMBLY_ICU_I18N_INCLUDE:STRING="/Users/pcheng/github/swift-source/build-icu/build/tmp_install/include"
-                        -DSWIFT_WEBASSEMBLY_ICU_STATICLIB:BOOL=true
-                    )
-                fi
-
                 if [[ "${DARWIN_OVERLAY_TARGET}" != "" ]]; then
                     # Split LOCAL_HOST into a pair ``arch-sdk``
                     # Example LOCAL_HOST: macosx-x86_64

@@ -13,12 +13,13 @@
 import SwiftPrivate
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku) || os(WebAssembly)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Cygwin) || os(Haiku)
 import Glibc
 #endif
 
 
-#if !os(Windows)
+#if !os(Windows) && !os(WebAssembly)
+// posix_spawn is not available on WebAssembly.
 // posix_spawn is not available on Windows.
 // posix_spawn is not available on Android.
 // posix_spawn is not available on Haiku.
@@ -292,6 +293,6 @@ public func posixWaitpid(_ pid: pid_t) -> ProcessTerminationStatus {
   preconditionFailure("did not understand what happened to child process")
 }
 
-// !os(Windows)
+// !os(Windows) && !os(WebAssembly)
 #endif
 

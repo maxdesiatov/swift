@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WebAssembly)
+
 import SwiftPrivate
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
@@ -161,3 +163,5 @@ public func WEXITSTATUS(_ status: CInt) -> CInt {
 public func WTERMSIG(_ status: CInt) -> CInt {
   return _WSTATUS(status)
 }
+
+#endif // !os(WebAssembly)
