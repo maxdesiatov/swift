@@ -5,5 +5,6 @@ add_swift_target_library(swiftStdlibUnittestFoundationExtras ${SWIFT_STDLIB_LIBR
   UnavailableFoundationMethodThunks.mm
 
   SWIFT_MODULE_DEPENDS Foundation StdlibUnittest
+  TARGET_SDKS ALL_POSIX_PLATFORMS
   INSTALL_IN_COMPONENT stdlib-experimental)
 
