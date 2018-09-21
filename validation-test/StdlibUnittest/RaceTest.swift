@@ -3,10 +3,12 @@
 // REQUIRES: stress_test
 // UNSUPPORTED: nonatomic_rc
 
+#if !os(WebAssembly)
+
 import StdlibUnittest
 #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(WebAssembly)
+#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android)
 import Glibc
 #endif
 
@@ -183,3 +185,4 @@ RaceTestSuite.test("timeout-big") {
 runAllTests()
 // CHECK: Race: Some tests failed, aborting
 
+#endif // !os(WebAssembly)
