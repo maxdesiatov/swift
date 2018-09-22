@@ -1186,6 +1186,7 @@ XCTEST_SOURCE_DIR="${WORKSPACE}/swift-corelibs-xctest"
 FOUNDATION_SOURCE_DIR="${WORKSPACE}/swift-corelibs-foundation"
 LIBDISPATCH_SOURCE_DIR="${WORKSPACE}/swift-corelibs-libdispatch"
 LIBICU_SOURCE_DIR="${WORKSPACE}/icu"
+EMSCRIPTEN_SOURCE_DIR="${WORKSPACE}/emscripten"
 PLAYGROUNDSUPPORT_SOURCE_DIR="${WORKSPACE}/swift-xcode-playground-support"
 
 if [[ ! "${SKIP_BUILD_PLAYGROUNDSUPPORT}" && ! -d ${PLAYGROUNDSUPPORT_SOURCE_DIR} ]]; then
@@ -2313,6 +2314,13 @@ for host in "${ALL_HOSTS[@]}"; do
                     )
                     build_targets=("${build_targets[@]}"
                                    "${SWIFT_BENCHMARK_TARGETS[@]}")
+                fi
+
+                if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    cmake_options=(
+                        "${cmake_options[@]}"
+                        -DSWIFT_PATH_TO_EMSCRIPTEN_SOURCE:STRING="${EMSCRIPTEN_SOURCE_DIR}"
+                    )
                 fi
 
                 skip_build=${SKIP_BUILD_SWIFT}
