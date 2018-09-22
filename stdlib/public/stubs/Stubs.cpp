@@ -69,7 +69,6 @@ static float swift_strtof_l(const char *nptr, char **endptr, locale_t loc) {
 #endif
 #elif defined(__linux__)
 #include <locale.h>
-#elif defined(__wasm__)
 #else
 #include <xlocale.h>
 #endif

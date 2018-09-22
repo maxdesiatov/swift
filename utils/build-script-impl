@@ -2108,6 +2108,7 @@ for host in "${ALL_HOSTS[@]}"; do
                     cmake_options=(
                         "${cmake_options[@]}"
                         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD:STRING="WebAssembly"
+                        -DLLVM_ENABLE_PROJECTS:STRING="lld"
                     )
                 fi
 

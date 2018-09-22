@@ -12,8 +12,6 @@
 
 #include "ImageInspectionWASM.h"
 
-#include <cstddef>
-
 // Create empty sections to ensure that the start/stop symbols are synthesized
 // by the linker.  Otherwise, we may end up with undefined symbol references as
 // the linker table section was never constructed.

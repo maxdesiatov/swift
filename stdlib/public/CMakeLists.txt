@@ -19,6 +19,20 @@ list(APPEND SWIFT_RUNTIME_SWIFT_COMPILE_FLAGS "-Xfrontend" "-verify-syntax-tree"
 # warnings.
 list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-Wall")
 
+is_sdk_requested(WEBASSEMBLY swift_build_webassembly)
+if (swift_build_webassembly)
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-D__wasm__")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-D__wasm32__")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-U__APPLE__")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-D__EMSCRIPTEN__")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-D_GNU_SOURCE")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-I${SWIFT_SOURCE_ROOT}/emscripten/system/include/compat")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-I${SWIFT_SOURCE_ROOT}/emscripten/system/include/libcxx")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-I${SWIFT_SOURCE_ROOT}/emscripten/system/include/libc")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-I${SWIFT_SOURCE_ROOT}/swift-source/icu/icu4c/source/common")
+  list(APPEND SWIFT_RUNTIME_CXX_FLAGS "-I${SWIFT_SOURCE_ROOT}/swift-source/icu/icu4c/source/i18n")
+endif()
+
 set(SWIFT_RUNTIME_CORE_CXX_FLAGS "${SWIFT_RUNTIME_CXX_FLAGS}")
 set(SWIFT_RUNTIME_CORE_LINK_FLAGS "${SWIFT_RUNTIME_LINK_FLAGS}")
 
