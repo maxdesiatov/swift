@@ -99,7 +99,7 @@ static inline __swift_size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_size(ptr);
 }
 #elif defined(__linux__) || defined(__CYGWIN__) || defined(__ANDROID__) \
-   || defined(__HAIKU__) || defined(__FreeBSD__)
+   || defined(__HAIKU__) || defined(__FreeBSD__) || defined(__wasm__)
 static inline __swift_size_t _swift_stdlib_malloc_size(const void *ptr) {
 #if defined(__ANDROID__)
 #if __ANDROID_API__ >= 17
