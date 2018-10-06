@@ -22,13 +22,15 @@
 #include <Windows.h>
 #include <Bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
+#elif defined(__wasm__)
+#warning WebAssembly target has no good random number generator
 #else
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #endif
 
-#if __has_include(<sys/random.h>)
+#if !defined(__wasm__) && __has_include(<sys/random.h>)
 #include <sys/random.h>
 #endif
 #include <sys/stat.h>
@@ -63,6 +65,11 @@ void swift::swift_stdlib_random(void *buf, __swift_size_t nbytes) {
   }
 }
 
+#elif defined(__wasm__)
+SWIFT_RUNTIME_STDLIB_API
+void swift::swift_stdlib_random(void *buf, __swift_size_t nbytes) {
+  memset(buf, 0, nbytes);
+}
 #else
 
 #undef  WHILE_EINTR
