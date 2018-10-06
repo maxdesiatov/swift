@@ -24,6 +24,7 @@
 #pragma comment(lib, "bcrypt.lib")
 #elif defined(__wasm__)
 #warning WebAssembly target has no good random number generator
+#include <string.h>
 #else
 #include <errno.h>
 #include <fcntl.h>
