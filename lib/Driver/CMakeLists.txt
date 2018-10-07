@@ -52,8 +52,9 @@ if(SWIFT_BUILD_STATIC_STDLIB)
 
       list(APPEND static_stdlib_lnk_file_list ${swift_static_stdlib_${sdk}_args})
       swift_install_in_component(stdlib
-        FILES "${SWIFTSTATICLIB_DIR}/${linkfile}"
-        DESTINATION "lib/swift_static/${lowercase_sdk}")
+        FILES "${SWIFTSTATICLIB_DIR}/${linkfile}.final"
+        DESTINATION "lib/swift_static/${lowercase_sdk}"
+        RENAME "static-stdlib-args.lnk")
     endif()
   endforeach()
   add_custom_target(swift_static_lnk_args ALL DEPENDS ${static_stdlib_lnk_file_list})

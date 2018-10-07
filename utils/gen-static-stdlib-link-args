@@ -45,6 +45,11 @@ EOF
 
 # If libicu was compiled as part of the swift build then link the libs as normal
 function use_local_iculibs {
+if [ "${IS_TEST}" == "TRUE" ]; then
+    TEST_RPATH="-rpath ${ICU_UC_LIBDIR}/"
+    TEST_LIBDIR="-L${ICU_UC_LIBDIR}/"
+fi
+
    read -d '' ICU_LIBS <<EOF
 -licui18nswift
 -licuucswift
@@ -54,11 +59,26 @@ EOF
 
 
 function write_linkfile {
+    TEST_RPATH=""
+    TEST_LIBDIR=""
+    if [ "${ICU_STATIC_LIB}" == "TRUE" ]; then
+        use_local_iculibs
+    else
+        find_static_iculibs
+    fi
+
     if [ -z "${OUTPUTFILE}" ]; then
         echo $0: No outputfile specified
         exit 1
     fi
-    cat >$OUTPUTFILE <<EOF
+{
+    if [ ! -z "$TEST_RPATH" ]; then
+        echo $TEST_RPATH
+    fi
+    if [ ! -z "$TEST_LIBDIR" ]; then
+        echo $TEST_LIBDIR
+    fi
+    cat <<EOF
 -ldl
 -lpthread
 -latomic
@@ -73,12 +93,13 @@ $ICU_LIBS
 -Xlinker
 ALL
 EOF
+} >$OUTPUTFILE
 }
 
-
-if [ "${ICU_STATIC_LIB}" == "TRUE" ]; then
-    use_local_iculibs
-else
-    find_static_iculibs
-fi
+# Create two output files, the first is used for testing to temporarily
+# point to the build dir for libicu if it is built on Linux.
+IS_TEST=TRUE
+write_linkfile
+IS_TEST=
+OUTPUTFILE="${OUTPUTFILE}.final"
 write_linkfile

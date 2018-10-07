@@ -42,7 +42,9 @@
         "libcxx": {
             "remote": { "id": "llvm-mirror/libcxx" } },
         "libcxxabi": {
-            "remote": { "id": "llvm-mirror/libcxxabi" } }
+            "remote": { "id": "llvm-mirror/libcxxabi" } },
+        "icu": {
+            "remote": { "id": "unicode-org/icu" } }
     },
     "default-branch-scheme": "master",
     "branch-schemes": {
@@ -67,7 +69,8 @@
                 "lld": "swift-to-wasm",
                 "musl": "wasm-prototype-1",
                 "libcxx": "release_70",
-                "libcxxabi": "release_70"
+                "libcxxabi": "release_70",
+                "icu": "release-61-1"
             }
         },
         "master": {

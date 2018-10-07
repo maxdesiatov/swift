@@ -3045,6 +3045,12 @@ for host in "${ALL_HOSTS[@]}"; do
                     LLDB_DOTEST_CC_OPTS="${LLDB_DOTEST_CC_OPTS} --filecheck $(build_directory $LOCAL_HOST llvm)/bin/FileCheck"
                 fi
 
+                # Add symlinks for libicu so that libFoundation can find them when testing lldb
+                if [[ ! "${SKIP_BUILD_LIBICU}" ]] ; then
+                    for i in $(build_directory ${host} libicu)/lib/lib*.so*; do
+                        ln -s $i $(build_directory ${host} foundation)/Foundation/
+                    done
+                fi
                 # Prefer to use lldb-dotest, as building it guarantees that we build all
                 # test dependencies. Ultimately we want to delete as much lldb-specific logic
                 # from this file as possible and just have a single call to lldb-dotest.
