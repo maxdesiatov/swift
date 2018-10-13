@@ -44,7 +44,9 @@
         "libcxxabi": {
             "remote": { "id": "llvm-mirror/libcxxabi" } },
         "icu": {
-            "remote": { "id": "unicode-org/icu" } }
+            "remote": { "id": "unicode-org/icu" },
+            "platforms": [ "Linux" ]
+        }
     },
     "default-branch-scheme": "master",
     "branch-schemes": {
