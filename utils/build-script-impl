@@ -1678,6 +1678,10 @@ function swift_c_flags() {
     if [[ "$(true_false "${SWIFT_STDLIB_USE_NONATOMIC_RC}")" == "TRUE" ]]; then
         echo -n " -DSWIFT_STDLIB_USE_NONATOMIC_RC"
     fi
+    if [[ ! "${SKIP_BUILD_LIBICU}" ]] ; then
+        # When building libicu, the symbols are mangled with an extra suffix
+        echo -n " -DU_HAVE_LIB_SUFFIX=1 -DU_LIB_SUFFIX_C_NAME=_swift"
+    fi
 }
 
 function cmake_config_opt() {
@@ -2752,7 +2756,10 @@ for host in "${ALL_HOSTS[@]}"; do
                     for l in uc i18n data
                     do
                         lib="${ICU_LIBDIR}/libicu${l}swift.a"
+<<<<<<< HEAD
                         cp "${lib}" "${ICU_LIBDIR_STATIC}"
+=======
+>>>>>>> When buiding ICU, use --with-library-suffix=swift
                         cp "${lib}" "${ICU_LIBDIR_STATIC_ARCH}"
                     done
                 fi
