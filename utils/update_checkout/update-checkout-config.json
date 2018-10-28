@@ -3,11 +3,11 @@
     "https-clone-pattern": "https://github.com/%s.git",
     "repos" : {
         "llvm": {
-            "remote": { "id": "apple/swift-llvm" } },
+            "remote": { "id": "maxdesiatov/swift-llvm" } },
         "clang": {
-            "remote": { "id": "apple/swift-clang" } },
+            "remote": { "id": "maxdesiatov/swift-clang" } },
         "swift": {
-            "remote": { "id": "apple/swift" } },
+            "remote": { "id": "maxdesiatov/swift" } },
         "lldb": {
             "remote": { "id": "apple/swift-lldb" } },
         "cmark": {
@@ -21,7 +21,7 @@
         "swift-stress-tester": {
             "remote": { "id": "apple/swift-stress-tester" } },
         "compiler-rt": {
-            "remote": { "id": "apple/swift-compiler-rt" } },
+            "remote": { "id": "maxdesiatov/swift-compiler-rt" } },
         "swift-corelibs-xctest": {
             "remote": { "id": "apple/swift-corelibs-xctest" } },
         "swift-corelibs-foundation": {
@@ -49,6 +49,26 @@
     },
     "default-branch-scheme": "master",
     "branch-schemes": {
+        "wasm": {
+            "aliases": ["master", "stable"],
+            "repos": {
+                "llvm": "swift-to-wasm",
+                "clang": "swift-to-wasm",
+                "swift": "swift-to-wasm",
+                "lldb": "stable",
+                "cmark": "master",
+                "llbuild": "master",
+                "swiftpm": "master",
+                "swift-syntax": "master",
+                "compiler-rt": "swift-to-wasm",
+                "swift-corelibs-xctest": "master",
+                "swift-corelibs-foundation": "master",
+                "swift-corelibs-libdispatch": "master",
+                "swift-integration-tests": "master",
+                "swift-xcode-playground-support": "master",
+                "ninja": "release"
+            }
+        },
         "master": {
             "aliases": ["master", "stable"],
             "repos": {
