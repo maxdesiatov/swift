@@ -9,22 +9,25 @@ from file_util import Chdir, CopyTree, Mkdir, Remove
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORK_DIR = os.path.join(SCRIPT_DIR, '../../..')
 
+BUILD_ROOT_DIR = os.path.join(WORK_DIR, 'build/Ninja-DebugAssert+stdlib-RelWithDebInfoAssert')
+
 MUSL_SRC_DIR = os.path.join(WORK_DIR, 'musl')
-MUSL_OUT_DIR = os.path.join(WORK_DIR, 'musl-out')
+MUSL_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'musl-out')
 
 LLVM_SRC_DIR = os.path.join(WORK_DIR, 'libcxx')
 
 LIBCXX_SRC_DIR = os.path.join(WORK_DIR, 'libcxx')
 LIBCXXABI_SRC_DIR = os.path.join(WORK_DIR, 'libcxxabi')
-LIBCXX_OUT_DIR = os.path.join(WORK_DIR, 'libcxx-out')
-LIBCXXABI_OUT_DIR = os.path.join(WORK_DIR, 'libcxxabi-out')
+LIBCXX_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'libcxx')
+LIBCXXABI_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'libcxxabi')
 
 COMPILER_RT_SRC_DIR = os.path.join(WORK_DIR, 'compiler-rt')
-COMPILER_RT_OUT_DIR = os.path.join(WORK_DIR, 'compiler-rt-out')
+COMPILER_RT_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'compiler-rt')
 
-INSTALL_SYSROOT = os.path.join(WORK_DIR, 'sysroot')
+INSTALL_SYSROOT = os.path.join(BUILD_ROOT_DIR, 'sysroot')
+INSTALL_DIR = os.path.join(BUILD_ROOT_DIR, 'wasm')
 
-LLVM_OUT_DIR = 'build/Ninja-DebugAssert+stdlib-RelWithDebInfoAssert/llvm-macosx-x86_64'
+LLVM_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'llvm-macosx-x86_64')
 LLVM_VERSION = '7.0.0'
 INSTALL_BIN = os.path.join(WORK_DIR, LLVM_OUT_DIR, 'bin')
 
@@ -178,6 +181,7 @@ def Musl():
   CopyTree(os.path.join(MUSL_OUT_DIR, 'obj', 'include', 'bits'),
             os.path.join(INSTALL_SYSROOT, 'include', 'bits'))
 
-# Musl()
+Musl()
 CompilerRT()
-# LibCXXABI()
+LibCXX()
+LibCXXABI()
