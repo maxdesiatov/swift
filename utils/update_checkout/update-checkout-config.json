@@ -36,7 +36,13 @@
             "remote": { "id": "unicode-org/icu" },
             "platforms": [ "Linux" ] },
         "lld": {
-            "remote": { "id": "maxdesiatov/lld" } }
+            "remote": { "id": "maxdesiatov/lld" } },
+        "musl": {
+            "remote": { "id": "jfbastien/musl" } },
+        "libcxx": {
+            "remote": { "id": "llvm-mirror/libcxx" } },
+        "libcxxabi": {
+            "remote": { "id": "llvm-mirror/libcxxabi" } }
     },
     "default-branch-scheme": "master",
     "branch-schemes": {
@@ -58,7 +64,10 @@
                 "swift-integration-tests": "master",
                 "swift-xcode-playground-support": "master",
                 "ninja": "release",
-                "lld": "swift-to-wasm"
+                "lld": "swift-to-wasm",
+                "musl": "wasm-prototype-1",
+                "libcxx": "release_70",
+                "libcxxabi": "release_70"
             }
         },
         "master": {
