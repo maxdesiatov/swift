@@ -208,7 +208,7 @@ add_swift_target_library(swiftImageRegistrationObjectCOFF
                   LINK_FLAGS ${SWIFT_RUNTIME_CORE_LINK_FLAGS}
                   TARGET_SDKS ${COFF_SDKS}
                   INSTALL_IN_COMPONENT none)
-add_swift_library(swiftImageRegistrationObjectWASM
+add_swift_target_library(swiftImageRegistrationObjectWASM
                   OBJECT_LIBRARY IS_STDLIB IS_STDLIB_CORE
                   SwiftRT-WASM.cpp
                   C_COMPILE_FLAGS ${SWIFT_RUNTIME_CORE_CXX_FLAGS}
