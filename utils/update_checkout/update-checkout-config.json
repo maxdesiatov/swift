@@ -50,7 +50,7 @@
     "default-branch-scheme": "master",
     "branch-schemes": {
         "wasm": {
-            "aliases": ["master", "stable"],
+            "aliases": ["wasm"],
             "repos": {
                 "llvm": "swift-to-wasm",
                 "clang": "swift-to-wasm",
