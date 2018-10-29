@@ -11,8 +11,8 @@ WORK_DIR = os.path.join(SCRIPT_DIR, '../../..')
 
 BUILD_ROOT_DIR = os.path.join(WORK_DIR, 'build/Ninja-DebugAssert+stdlib-RelWithDebInfoAssert')
 
-MUSL_SRC_DIR = os.path.join(WORK_DIR, 'musl')
-MUSL_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'musl')
+MUSL_SRC_DIR = os.environ['MUSL_SOURCE_DIR']
+MUSL_OUT_DIR = os.environ['MUSL_BUILD_DIR']
 
 LLVM_SRC_DIR = os.path.join(WORK_DIR, 'libcxx')
 

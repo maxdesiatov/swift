@@ -1218,6 +1218,9 @@ if [ -e "${WORKSPACE}/compiler-rt" ] ; then
 fi
 
 PRODUCTS=(cmark llvm)
+if [[ ! "${SKIP_BUILD_MUSL}" ]] ; then
+     PRODUCTS=("${PRODUCTS[@]}" musl)
+fi
 if [[ ! "${SKIP_BUILD_LIBICU}" ]] ; then
      PRODUCTS=("${PRODUCTS[@]}" libicu)
 fi
@@ -1577,6 +1580,8 @@ function build_directory_bin() {
                 echo "${root}/${LIBDISPATCH_BUILD_TYPE}/bin"
                 ;;
             libicu)
+                ;;
+            musl)
                 ;;
             playgroundsupport)
                 echo "${root}/${PLAYGROUNDSUPPORT_BUILD_TYPE}/bin"
@@ -2743,8 +2748,9 @@ for host in "${ALL_HOSTS[@]}"; do
                 ICU_LIBDIR="$(build_directory ${host} swift)/lib/swift/${SWIFT_HOST_VARIANT}/${SWIFT_HOST_VARIANT_ARCH}"
                 ICU_LIBDIR_STATIC="$(build_directory ${host} swift)/lib/swift_static/${SWIFT_HOST_VARIANT}"
                 ICU_LIBDIR_STATIC_ARCH="$(build_directory ${host} swift)/lib/swift_static/${SWIFT_HOST_VARIANT}/${SWIFT_HOST_VARIANT_ARCH}"
-                # Add in the ICU renaming config into uconfig.h
-                sed -e "/^#define __UCONFIG_H__/ r ${LIBICU_BUILD_DIR}/uconfig.h.prepend" -i ${ICU_TMPINSTALL}/include/unicode/uconfig.h
+  
+                sed -e "/^#define __UCONFIG_H__/ r ${LIBICU_BUILD_DIR}/uconfig.h.prepend" -i.copy ${ICU_TMPINSTALL}/include/unicode/uconfig.h
+                mv -f ${ICU_TMPINSTALL}/include/unicode/uconfig.h.copy ${ICU_TMPINSTALL}/include/unicode/uconfig.h
 
                 if [ $(true_false "${BUILD_SWIFT_STATIC_STDLIB}") == "TRUE" ]; then
                     # Copy the static libs into the swift_static directory
@@ -2770,6 +2776,14 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DICU_I18N_LIBDIR:PATH="${LIBICU_BUILD_DIR}/lib"
                 )
                 # libicu builds itself and doesn't use cmake
+                continue
+                ;;
+            musl)
+                MUSL_BUILD_DIR=$(build_directory ${host} ${product})
+                with_pushd "${MUSL_BUILD_DIR}" \
+                    call env MUSL_SOURCE_DIR=${MUSL_SOURCE_DIR} \
+                        MUSL_BUILD_DIR=${MUSL_BUILD_DIR} \
+                        "${SWIFT_SOURCE_DIR}/utils/webassembly/build.py" 
                 continue
                 ;;
             playgroundsupport)

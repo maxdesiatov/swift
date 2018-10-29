@@ -69,7 +69,7 @@
                 "llbuild": "master",
                 "swiftpm": "master",
                 "swift-syntax": "master",
-                "compiler-rt": "swift-to-wasm",
+                "compiler-rt": "upstream-with-swift",
                 "swift-corelibs-xctest": "master",
                 "swift-corelibs-foundation": "master",
                 "swift-corelibs-libdispatch": "master",
