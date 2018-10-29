@@ -12,7 +12,7 @@ WORK_DIR = os.path.join(SCRIPT_DIR, '../../..')
 BUILD_ROOT_DIR = os.path.join(WORK_DIR, 'build/Ninja-DebugAssert+stdlib-RelWithDebInfoAssert')
 
 MUSL_SRC_DIR = os.path.join(WORK_DIR, 'musl')
-MUSL_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'musl-out')
+MUSL_OUT_DIR = os.path.join(BUILD_ROOT_DIR, 'musl')
 
 LLVM_SRC_DIR = os.path.join(WORK_DIR, 'libcxx')
 
@@ -32,8 +32,8 @@ LLVM_VERSION = '7.0.0'
 INSTALL_BIN = os.path.join(WORK_DIR, LLVM_OUT_DIR, 'bin')
 
 CLANG_BIN_PATH = os.path.join(INSTALL_BIN, 'clang')
-CLANG_AR_BIN_PATH = os.path.join(INSTALL_BIN, 'clang-ar')
-CLANG_RANLIB_BIN_PATH = os.path.join(INSTALL_BIN, 'clang-ranlib')
+LLVM_AR_BIN_PATH = os.path.join(INSTALL_BIN, 'llvm-ar')
+LLVM_RANLIB_BIN_PATH = os.path.join(INSTALL_BIN, 'llvm-ranlib')
 
 WASM_TRIPLE = 'wasm32-unknown-unknown-wasm'
 
@@ -94,8 +94,8 @@ def CompilerRT():
              '-DCMAKE_CXX_COMPILER=' + CLANG_BIN_PATH,
              '-DCMAKE_C_COMPILER_TARGET=' + WASM_TRIPLE,
              '-DCMAKE_CXX_COMPILER_TARGET=' + WASM_TRIPLE,
-             '-DCMAKE_AR=' + CLANG_RANLIB_BIN_PATH,
-             '-DCMAKE_RANLIB=' + CLANG_AR_BIN_PATH,
+             '-DCMAKE_AR=' + LLVM_AR_BIN_PATH,
+             '-DCMAKE_RANLIB=' + LLVM_RANLIB_BIN_PATH,
              '-DCMAKE_SYSROOT=' + INSTALL_SYSROOT]
 
   proc.check_call(command, cwd=COMPILER_RT_OUT_DIR)
@@ -142,8 +142,8 @@ def LibCXXABI():
              '-DCMAKE_CXX_COMPILER=' + CLANG_BIN_PATH,
              '-DCMAKE_C_COMPILER_TARGET=' + WASM_TRIPLE,
              '-DCMAKE_CXX_COMPILER_TARGET=' + WASM_TRIPLE,
-             '-DCMAKE_AR=' + CLANG_RANLIB_BIN_PATH,
-             '-DCMAKE_RANLIB=' + CLANG_AR_BIN_PATH,
+             '-DCMAKE_AR=' + LLVM_RANLIB_BIN_PATH,
+             '-DCMAKE_RANLIB=' + LLVM_AR_BIN_PATH,
              '-DCMAKE_SYSROOT=' + INSTALL_SYSROOT]
 
   proc.check_call(command, cwd=LIBCXXABI_OUT_DIR)
