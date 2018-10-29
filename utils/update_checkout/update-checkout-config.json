@@ -36,16 +36,24 @@
             "remote": { "id": "unicode-org/icu" },
             "platforms": [ "Linux" ] },
         "lld": {
-            "remote": { "id": "maxdesiatov/lld" } },
+            "remote": { "id": "maxdesiatov/lld" },
+            "platforms": [ "WebAssembly" ]
+        },
         "musl": {
-            "remote": { "id": "jfbastien/musl" } },
+            "remote": { "id": "jfbastien/musl" },
+            "platforms": [ "WebAssembly" ]
+        },
         "libcxx": {
-            "remote": { "id": "llvm-mirror/libcxx" } },
+            "remote": { "id": "llvm-mirror/libcxx" },
+            "platforms": [ "WebAssembly" ] 
+        },
         "libcxxabi": {
-            "remote": { "id": "llvm-mirror/libcxxabi" } },
+            "remote": { "id": "llvm-mirror/libcxxabi" },
+            "platforms": [ "WebAssembly" ]
+        },
         "icu": {
             "remote": { "id": "unicode-org/icu" },
-            "platforms": [ "Linux" ]
+            "platforms": [ "Linux", "WebAssembly" ]
         }
     },
     "default-branch-scheme": "master",

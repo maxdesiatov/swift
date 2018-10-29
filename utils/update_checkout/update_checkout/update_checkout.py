@@ -386,11 +386,11 @@ def full_target_name(repository, target):
     raise RuntimeError('Cannot determine if %s is a branch or a tag' % target)
 
 
-def skip_list_for_platform(config):
+def skip_list_for_platform(args, config):
     # If there is a platforms key only include the repo if the
     # plaform is in the list
     skip_list = []
-    platform_name = platform.system()
+    platform_name = args.target_platform or platform.system()
 
     for repo_name, repo_info in config['repos'].items():
         if 'platforms' in repo_info:
@@ -473,6 +473,13 @@ By default, updates your checkouts of Swift, SourceKit, LLDB, and SwiftPM.""")
         help='Check out adjacent repositories to match timestamp of '
         ' current swift checkout.',
         action='store_true')
+    parser.add_argument(
+        "--target-platform",
+        help='Override target platform for determining a list of repositories '
+        'to check out. Default target platform is the same as '
+        'the host platform',
+        metavar='TARGET-PLATFORM',
+        dest='target_platform')
     parser.add_argument(
         "-j", "--jobs",
         type=int,
