@@ -533,7 +533,7 @@ By default, updates your checkouts of Swift, SourceKit, LLDB, and SwiftPM.""")
         if scheme is None:
             scheme = config['default-branch-scheme']
 
-        skip_repo_list = skip_list_for_platform(config)
+        skip_repo_list = skip_list_for_platform(args, config)
         skip_repo_list.extend(args.skip_repository_list)
         clone_results = obtain_all_additional_swift_sources(args, config,
                                                             clone_with_ssh,
