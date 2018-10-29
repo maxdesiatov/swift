@@ -2324,11 +2324,11 @@ for host in "${ALL_HOSTS[@]}"; do
                 fi
 
                 if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    musl_build_dir=$(build_directory ${host} ${product})
                     cmake_options=(
                         "${cmake_options[@]}"
-                        -DSWIFT_PATH_TO_LIBC_SOURCE:STRING="${MUSL_SOURCE_DIR}"
-                        -DSWIFT_PATH_TO_LIBCXX_SOURCE:STRING="${LIBCXX_SOURCE_DIR}"
-                        -DSWIFT_PATH_TO_LIBCXXABI_SOURCE:STRING="${LIBCXXABI_SOURCE_DIR}"
+                        -DSWIFT_PATH_TO_LIBC_BUILD:STRING="${musl_build_dir}/obj"
+                        -DSWIFT_PATH_TO_LIBCXX_BUILD:STRING="${llvm_build_dir}"
                     )
                 fi
 
@@ -2749,8 +2749,10 @@ for host in "${ALL_HOSTS[@]}"; do
                 ICU_LIBDIR_STATIC="$(build_directory ${host} swift)/lib/swift_static/${SWIFT_HOST_VARIANT}"
                 ICU_LIBDIR_STATIC_ARCH="$(build_directory ${host} swift)/lib/swift_static/${SWIFT_HOST_VARIANT}/${SWIFT_HOST_VARIANT_ARCH}"
   
-                sed -e "/^#define __UCONFIG_H__/ r ${LIBICU_BUILD_DIR}/uconfig.h.prepend" -i.copy ${ICU_TMPINSTALL}/include/unicode/uconfig.h
-                mv -f ${ICU_TMPINSTALL}/include/unicode/uconfig.h.copy ${ICU_TMPINSTALL}/include/unicode/uconfig.h
+                with_pushd ${ICU_TMPINSTALL} \
+                    call sed -e "/^#define __UCONFIG_H__/ r ${LIBICU_BUILD_DIR}/uconfig.h.prepend" -i.copy include/unicode/uconfig.h
+                with_pushd ${ICU_TMPINSTALL} \
+                    call mv -f include/unicode/uconfig.h.copy include/unicode/uconfig.h
 
                 if [ $(true_false "${BUILD_SWIFT_STATIC_STDLIB}") == "TRUE" ]; then
                     # Copy the static libs into the swift_static directory
@@ -2779,11 +2781,15 @@ for host in "${ALL_HOSTS[@]}"; do
                 continue
                 ;;
             musl)
-                MUSL_BUILD_DIR=$(build_directory ${host} ${product})
-                with_pushd "${MUSL_BUILD_DIR}" \
-                    call env MUSL_SOURCE_DIR=${MUSL_SOURCE_DIR} \
-                        MUSL_BUILD_DIR=${MUSL_BUILD_DIR} \
-                        "${SWIFT_SOURCE_DIR}/utils/webassembly/build.py" 
+                musl_build_dir=$(build_directory ${host} ${product})
+                with_pushd "${MUSL_SOURCE_DIR}" \
+                    call ./libc.py --compile-to-wasm \
+                        --binaryen_dir unused_dummy_but_required_argument \
+                        --clang_dir "${llvm_build_dir}/bin" \
+                        --out "${musl_build_dir}/libc.a" \
+                        --musl "${MUSL_SOURCE_DIR}"
+                with_pushd "${musl_build_dir}" \
+                    call "${llvm_build_dir}/bin/llvm-ar" rc libm.a
                 continue
                 ;;
             playgroundsupport)
