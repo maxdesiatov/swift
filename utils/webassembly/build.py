@@ -114,8 +114,8 @@ def LibCXX():
              '-DLIBCXX_CXX_ABI=libcxxabi',
              '-DLIBCXX_CXX_ABI_INCLUDE_PATHS=' +
              os.path.join(LIBCXXABI_SRC_DIR, 'include'),
-             '-DLLVM_PATH=' + LLVM_SRC_DIR,
-             '-DCMAKE_TOOLCHAIN_FILE=' + CMAKE_TOOLCHAIN_FILE]
+             '-DLLVM_PATH=' + LLVM_SRC_DIR,]
+            #  '-DCMAKE_TOOLCHAIN_FILE=' + CMAKE_TOOLCHAIN_FILE]
 
   proc.check_call(command, cwd=LIBCXX_OUT_DIR)
   proc.check_call(['ninja', '-v'], cwd=LIBCXX_OUT_DIR)
@@ -182,6 +182,3 @@ def Musl():
             os.path.join(INSTALL_SYSROOT, 'include', 'bits'))
 
 Musl()
-CompilerRT()
-LibCXX()
-LibCXXABI()
