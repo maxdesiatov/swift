@@ -76,7 +76,7 @@
                 "swift-integration-tests": "master",
                 "swift-xcode-playground-support": "master",
                 "ninja": "release",
-                "lld": "swift-to-wasm",
+                "lld": "master",
                 "musl": "wasm-prototype-1",
                 "libcxx": "release_70",
                 "libcxxabi": "release_70",
