@@ -61,9 +61,34 @@
         "wasm": {
             "aliases": ["wasm"],
             "repos": {
-                "llvm": "swift-to-wasm",
-                "clang": "swift-to-wasm",
+                "llvm": "stable",
+                "clang": "stable",
                 "swift": "swift-to-wasm",
+                "lldb": "stable",
+                "cmark": "master",
+                "llbuild": "master",
+                "swiftpm": "master",
+                "swift-syntax": "master",
+                "compiler-rt": "stable",
+                "swift-corelibs-xctest": "master",
+                "swift-corelibs-foundation": "master",
+                "swift-corelibs-libdispatch": "master",
+                "swift-integration-tests": "master",
+                "swift-xcode-playground-support": "master",
+                "ninja": "release",
+                "lld": "release_70",
+                "musl": "wasm-prototype-1",
+                "libcxx": "release_70",
+                "libcxxabi": "release_70",
+                "icu": "release-61-1"
+            }
+        },
+        "wasm-next": {
+            "aliases": ["wasm-next"],
+            "repos": {
+                "llvm": "upstream-with-swift-to-wasm",
+                "clang": "upstream-with-swift-to-wasm",
+                "swift": "swift-to-wasm-next",
                 "lldb": "stable",
                 "cmark": "master",
                 "llbuild": "master",
