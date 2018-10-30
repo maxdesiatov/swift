@@ -2327,6 +2327,8 @@ for host in "${ALL_HOSTS[@]}"; do
                     musl_build_dir=$(build_directory ${host} ${product})
                     cmake_options=(
                         "${cmake_options[@]}"
+                        -DSWIFT_BUILD_RUNTIME_WITH_HOST_COMPILER=FALSE
+                        -DSWIFT_SDKS='OSX;WEBASSEMBLY'
                         -DSWIFT_PATH_TO_LIBC_BUILD:STRING="${musl_build_dir}/obj"
                         -DSWIFT_PATH_TO_LIBCXX_BUILD:STRING="${llvm_build_dir}"
                     )
@@ -2782,6 +2784,7 @@ for host in "${ALL_HOSTS[@]}"; do
                 ;;
             musl)
                 musl_build_dir=$(build_directory ${host} ${product})
+                call mkdir -p ${musl_build_dir}
                 with_pushd "${MUSL_SOURCE_DIR}" \
                     call ./libc.py --compile-to-wasm \
                         --binaryen_dir unused_dummy_but_required_argument \
