@@ -16,6 +16,8 @@
 // by the linker.  Otherwise, we may end up with undefined symbol references as
 // the linker table section was never constructed.
 
+// FIXME: this asm directive is directly copied from SwiftRT-ELF, 
+// but doesn't compile
 // __asm__("\t.section " #name ",\"a\"\n");
 #define DECLARE_SWIFT_SECTION(name)                                            \
   __attribute__((__visibility__("hidden"),__aligned__(1))) extern const char __start_##name;  \
