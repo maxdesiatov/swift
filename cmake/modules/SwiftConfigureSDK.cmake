@@ -263,6 +263,7 @@ macro(configure_sdk_webassembly
   set(SWIFT_SDK_${prefix}_OBJECT_FORMAT "WASM")
 
   set(SWIFT_SDK_${prefix}_ARCH_${arch}_TRIPLE "${triple}")
+  set(SWIFT_SDK_${prefix}_ARCH_${arch}_PATH "/")
 
   # Add this to the list of known SDKs.
   list(APPEND SWIFT_CONFIGURED_SDKS "${prefix}")
