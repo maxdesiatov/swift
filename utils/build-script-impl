@@ -2329,6 +2329,7 @@ for host in "${ALL_HOSTS[@]}"; do
                         "${cmake_options[@]}"
                         -DSWIFT_BUILD_RUNTIME_WITH_HOST_COMPILER=FALSE
                         -DSWIFT_SDKS='OSX;WEBASSEMBLY'
+                        -DSWIFT_PATH_TO_LIBC_SOURCE:STRING="${MUSL_SOURCE_DIR}"
                         -DSWIFT_PATH_TO_LIBC_BUILD:STRING="${musl_build_dir}/obj"
                         -DSWIFT_PATH_TO_LIBCXX_BUILD:STRING="${llvm_build_dir}"
                     )
