@@ -2324,7 +2324,7 @@ for host in "${ALL_HOSTS[@]}"; do
                 fi
 
                 if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
-                    musl_build_dir=$(build_directory ${host} ${product})
+                    musl_build_dir=$(build_directory ${host} musl)
                     cmake_options=(
                         "${cmake_options[@]}"
                         -DSWIFT_BUILD_RUNTIME_WITH_HOST_COMPILER=FALSE
