@@ -2121,7 +2121,6 @@ for host in "${ALL_HOSTS[@]}"; do
                         -DLIBCXX_ENABLE_SHARED=OFF
                         -DLIBCXX_HAS_MUSL_LIBC=ON
                         -DLIBCXX_CXX_ABI=libcxxabi
-                        -DCMAKE_EXE_LINKER_FLAGS=-nostdlib++
                         -DLIBCXXABI_ENABLE_SHARED=OFF
                         -DLIBCXXABI_ENABLE_THREADS=OFF
                         # HandleLLVMOptions.cmake include CheckCompilerVersion.cmake.
