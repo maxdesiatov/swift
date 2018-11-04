@@ -1221,6 +1221,9 @@ PRODUCTS=(cmark llvm)
 if [[ ! "${SKIP_BUILD_MUSL}" ]] ; then
      PRODUCTS=("${PRODUCTS[@]}" musl)
 fi
+if [[ ! "${SKIP_BUILD_LIBCXX}" ]] ; then
+     PRODUCTS=("${PRODUCTS[@]}" libcxx)
+fi
 if [[ ! "${SKIP_BUILD_LIBICU}" ]] ; then
      PRODUCTS=("${PRODUCTS[@]}" libicu)
 fi
@@ -2131,7 +2134,32 @@ for host in "${ALL_HOSTS[@]}"; do
                 fi
 
                 ;;
-
+            musl)
+                musl_build_dir=$(build_directory ${host} ${product})
+                call mkdir -p ${musl_build_dir}
+                with_pushd "${MUSL_SOURCE_DIR}" \
+                    call ./libc.py --compile-to-wasm \
+                        --binaryen_dir unused_dummy_but_required_argument \
+                        --clang_dir "${llvm_build_dir}/bin" \
+                        --out "${musl_build_dir}/libc.a" \
+                        --musl "${MUSL_SOURCE_DIR}"
+                with_pushd "${musl_build_dir}" \
+                    call "${llvm_build_dir}/bin/llvm-ar" rc libm.a
+                continue
+                ;;
+            libcxx)
+                # LLVM WebAssembly is currently disabled by default. Enabled it.
+                if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    cmake_options=(
+                        "${cmake_options[@]}"
+                        -DCMAKE_EXE_LINKER_FLAGS=-nostdlib++
+                        -DLIBCXX_ENABLE_THREADS=OFF
+                        -DLIBCXX_ENABLE_SHARED=OFF
+                        -DLIBCXX_HAS_MUSL_LIBC=ON
+                        -DLIBCXX_CXX_ABI=libcxxabi
+                    )
+                fi
+                ;;
             swift)
 
                 if [[ ! "${SKIP_BUILD_ANDROID}" ]]; then
@@ -2791,19 +2819,6 @@ for host in "${ALL_HOSTS[@]}"; do
                     -DICU_I18N_LIBDIR:PATH="${LIBICU_BUILD_DIR}/lib"
                 )
                 # libicu builds itself and doesn't use cmake
-                continue
-                ;;
-            musl)
-                musl_build_dir=$(build_directory ${host} ${product})
-                call mkdir -p ${musl_build_dir}
-                with_pushd "${MUSL_SOURCE_DIR}" \
-                    call ./libc.py --compile-to-wasm \
-                        --binaryen_dir unused_dummy_but_required_argument \
-                        --clang_dir "${llvm_build_dir}/bin" \
-                        --out "${musl_build_dir}/libc.a" \
-                        --musl "${MUSL_SOURCE_DIR}"
-                with_pushd "${musl_build_dir}" \
-                    call "${llvm_build_dir}/bin/llvm-ar" rc libm.a
                 continue
                 ;;
             playgroundsupport)
