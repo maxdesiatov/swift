@@ -748,7 +748,7 @@ endif()
 
 # Should we cross-compile the standard library for WebAssembly
 is_sdk_requested(WEBASSEMBLY swift_build_webassembly)
-if (swift_build_webassembly)
+if(swift_build_webassembly)
   configure_sdk_webassembly(WEBASSEMBLY "WebAssembly" "webassembly" "webassembly" "wasm32" "wasm32-unknown-unknown-wasm" "${SWIFT_SDK_WEBASSEMBLY_PATH}")
 
   set(SWIFT_PRIMARY_VARIANT_SDK_default "WEBASSEMBLY")
