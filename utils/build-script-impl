@@ -2889,7 +2889,9 @@ for host in "${ALL_HOSTS[@]}"; do
         # swift. So we need to do configure's work here.
         if [[ "${product}" == "llvm" ]]; then
             # Find the location of the c++ header dir.
-            if [[ "$(uname -s)" == "Darwin" ]] ; then
+            if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+              HOST_CXX_HEADERS_DIR="${WORKSPACE}/libcxx/include"
+            elif [[ "$(uname -s)" == "Darwin" ]] ; then
               HOST_CXX_DIR=$(dirname "${HOST_CXX}")
               HOST_CXX_HEADERS_DIR="$HOST_CXX_DIR/../../usr/include/c++"
             elif [[ "$(uname -s)" == "Haiku" ]] ; then
@@ -2900,7 +2902,7 @@ for host in "${ALL_HOSTS[@]}"; do
 
             # Find the path in which the local clang build is expecting to find
             # the c++ header files.
-            BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include"
+            BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include/c++"
 
             echo "symlinking the system headers ($HOST_CXX_HEADERS_DIR) into the local clang build directory ($BUILT_CXX_INCLUDE_DIR)."
             call ln -s -f "$HOST_CXX_HEADERS_DIR" "$BUILT_CXX_INCLUDE_DIR"
