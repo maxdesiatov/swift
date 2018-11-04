@@ -2117,6 +2117,17 @@ for host in "${ALL_HOSTS[@]}"; do
                         "${cmake_options[@]}"
                         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD:STRING="WebAssembly"
                         -DLLVM_ENABLE_PROJECTS:STRING="lld"
+                        -DLIBCXX_ENABLE_THREADS=OFF
+                        -DLIBCXX_ENABLE_SHARED=OFF
+                        -DLIBCXX_HAS_MUSL_LIBC=ON
+                        -DLIBCXX_CXX_ABI=libcxxabi
+                        -DCMAKE_EXE_LINKER_FLAGS=-nostdlib++
+                        -DLIBCXXABI_ENABLE_SHARED=OFF
+                        -DLIBCXXABI_ENABLE_THREADS=OFF
+                        # HandleLLVMOptions.cmake include CheckCompilerVersion.cmake.
+                        # This checks for working <atomic> header, which in turn errors
+                        # out on systems with threads disabled
+                        -DLLVM_COMPILER_CHECKED=ON
                     )
                 fi
 
