@@ -2150,13 +2150,16 @@ for host in "${ALL_HOSTS[@]}"; do
             libcxx)
                 # LLVM WebAssembly is currently disabled by default. Enabled it.
                 if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
+                    libcxx_build_dir=$(build_directory ${host} ${product})
                     cmake_options=(
                         "${cmake_options[@]}"
                         -DCMAKE_EXE_LINKER_FLAGS=-nostdlib++
+                        -DLIBCXX_BUILD_32_BITS=ON
                         -DLIBCXX_ENABLE_THREADS=OFF
                         -DLIBCXX_ENABLE_SHARED=OFF
                         -DLIBCXX_HAS_MUSL_LIBC=ON
                         -DLIBCXX_CXX_ABI=libcxxabi
+                        -DLIBCXX_INSTALL_PREFIX="${libcxx_build_dir}"
                     )
                 fi
                 ;;
@@ -2888,9 +2891,15 @@ for host in "${ALL_HOSTS[@]}"; do
         # tree... but we are not building llvm with libcxx in tree when we build
         # swift. So we need to do configure's work here.
         if [[ "${product}" == "llvm" ]]; then
+            # Find the path in which the local clang build is expecting to find
+            # the c++ header files.
+            BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include/c++"
+
             # Find the location of the c++ header dir.
             if [[ ! "${SKIP_BUILD_WEBASSEMBLY}" ]]; then
               HOST_CXX_HEADERS_DIR="${WORKSPACE}/libcxx/include"
+              call mkdir -p "$BUILT_CXX_INCLUDE_DIR"
+              BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include/c++/v1"
             elif [[ "$(uname -s)" == "Darwin" ]] ; then
               HOST_CXX_DIR=$(dirname "${HOST_CXX}")
               HOST_CXX_HEADERS_DIR="$HOST_CXX_DIR/../../usr/include/c++"
@@ -2900,9 +2909,6 @@ for host in "${ALL_HOSTS[@]}"; do
               HOST_CXX_HEADERS_DIR="/usr/include/c++"
             fi
 
-            # Find the path in which the local clang build is expecting to find
-            # the c++ header files.
-            BUILT_CXX_INCLUDE_DIR="$llvm_build_dir/include/c++"
 
             echo "symlinking the system headers ($HOST_CXX_HEADERS_DIR) into the local clang build directory ($BUILT_CXX_INCLUDE_DIR)."
             call ln -s -f "$HOST_CXX_HEADERS_DIR" "$BUILT_CXX_INCLUDE_DIR"
