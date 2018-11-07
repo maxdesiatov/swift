@@ -52,8 +52,8 @@
         "wasm": {
             "aliases": ["wasm"],
             "repos": {
-                "llvm": "stable",
-                "clang": "stable",
+                "llvm": "swift-to-wasm",
+                "clang": "swift-to-wasm",
                 "swift": "wasm",
                 "lldb": "stable",
                 "cmark": "master",
@@ -72,8 +72,8 @@
         "wasm-next": {
             "aliases": ["wasm-next"],
             "repos": {
-                "llvm": "upstream-with-swift",
-                "clang": "upstream-with-swift",
+                "llvm": "upstream-with-swift-to-wasm",
+                "clang": "upstream-with-swift-to-wasm",
                 "swift": "wasm",
                 "lldb": "upstream-with-swift",
                 "cmark": "master",
