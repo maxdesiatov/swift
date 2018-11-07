@@ -74,7 +74,7 @@
             "repos": {
                 "llvm": "upstream-with-swift-to-wasm",
                 "clang": "upstream-with-swift-to-wasm",
-                "swift": "wasm",
+                "swift": "wasm-next",
                 "lldb": "upstream-with-swift",
                 "cmark": "master",
                 "llbuild": "master",
