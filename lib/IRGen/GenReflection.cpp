@@ -808,7 +808,7 @@ static std::string getReflectionSectionName(IRGenModule &IGM,
     OS << "__TEXT,__swift5_" << LongName << ", regular, no_dead_strip";
     break;
   case llvm::Triple::Wasm:
-    OS << "swift3_" << LongName;
+    OS << "swift5_" << LongName;
     break;
   }
   return OS.str();
