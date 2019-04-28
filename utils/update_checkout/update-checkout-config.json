@@ -21,7 +21,7 @@
         "swift-stress-tester": {
             "remote": { "id": "apple/swift-stress-tester" } },
         "compiler-rt": {
-            "remote": { "id": "maxdesiatov/swift-compiler-rt" } },
+            "remote": { "id": "apple/swift-compiler-rt" } },
         "swift-corelibs-xctest": {
             "remote": { "id": "apple/swift-corelibs-xctest" } },
         "swift-corelibs-foundation": {
