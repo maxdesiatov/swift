@@ -128,7 +128,7 @@ static uint16_t RuntimeFunctionCountersOffsets[] = {
 /// Public APIs
 
 /// Get the runtime object state associated with an object.
-SWIFT_CC(swift) void _swift_getObjectRuntimeFunctionCounters(
+void _swift_getObjectRuntimeFunctionCounters(
     HeapObject *object, RuntimeFunctionCountersState *result) {
   auto &theSentinel = RuntimeObjectStateCache.get();
   StaticScopedReadLock lock(theSentinel.Lock);
@@ -137,7 +137,7 @@ SWIFT_CC(swift) void _swift_getObjectRuntimeFunctionCounters(
 
 /// Set the runtime object state associated with an object from a provided
 /// state.
-SWIFT_CC(swift) void _swift_setObjectRuntimeFunctionCounters(
+void _swift_setObjectRuntimeFunctionCounters(
     HeapObject *object, RuntimeFunctionCountersState *state) {
   auto &theSentinel = RuntimeObjectStateCache.get();
   StaticScopedWriteLock lock(theSentinel.Lock);
@@ -146,14 +146,14 @@ SWIFT_CC(swift) void _swift_setObjectRuntimeFunctionCounters(
 
 /// Get the global runtime state containing the total numbers of invocations for
 /// each runtime function of interest.
-SWIFT_CC(swift) void _swift_getGlobalRuntimeFunctionCounters(
+void _swift_getGlobalRuntimeFunctionCounters(
     RuntimeFunctionCountersState *result) {
   StaticScopedReadLock lock(RuntimeGlobalFunctionCountersState.Lock);
   *result = RuntimeGlobalFunctionCountersState.State;
 }
 
 /// Set the global runtime state of function pointers from a provided state.
-SWIFT_CC(swift) void _swift_setGlobalRuntimeFunctionCounters(
+void _swift_setGlobalRuntimeFunctionCounters(
     RuntimeFunctionCountersState *state) {
   StaticScopedWriteLock lock(RuntimeGlobalFunctionCountersState.Lock);
   RuntimeGlobalFunctionCountersState.State = *state;
@@ -162,19 +162,19 @@ SWIFT_CC(swift) void _swift_setGlobalRuntimeFunctionCounters(
 /// Return the names of the runtime functions being tracked.
 /// Their order is the same as the order of the counters in the
 /// RuntimeObjectState structure. All these strings are null terminated.
-SWIFT_CC(swift) const char **_swift_getRuntimeFunctionNames() {
+const char **_swift_getRuntimeFunctionNames() {
   return RuntimeFunctionNames;
 }
 
 /// Return the offsets of the runtime function counters being tracked.
 /// Their order is the same as the order of the counters in the
 /// RuntimeObjectState structure.
-SWIFT_CC(swift) const uint16_t *_swift_getRuntimeFunctionCountersOffsets() {
+const uint16_t *_swift_getRuntimeFunctionCountersOffsets() {
   return RuntimeFunctionCountersOffsets;
 }
 
 /// Return the number of runtime functions being tracked.
-SWIFT_CC(swift) uint64_t _swift_getNumRuntimeFunctionCounters() {
+uint64_t _swift_getNumRuntimeFunctionCounters() {
   return ID_LastRuntimeFunctionName;
 }
 
@@ -202,7 +202,7 @@ void _swift_dumpObjectsRuntimeFunctionPointers() {
 
 /// Set mode for global runtime function counters.
 /// Return the old value of this flag.
-SWIFT_CC(swift) int _swift_setGlobalRuntimeFunctionCountersMode(int mode) {
+int _swift_setGlobalRuntimeFunctionCountersMode(int mode) {
   int oldMode = UpdateGlobalRuntimeFunctionCounters;
   UpdateGlobalRuntimeFunctionCounters = mode ? 1 : 0;
   return oldMode;
@@ -210,7 +210,7 @@ SWIFT_CC(swift) int _swift_setGlobalRuntimeFunctionCountersMode(int mode) {
 
 /// Set mode for per object runtime function counters.
 /// Return the old value of this flag.
-SWIFT_CC(swift) int _swift_setPerObjectRuntimeFunctionCountersMode(int mode) {
+int _swift_setPerObjectRuntimeFunctionCountersMode(int mode) {
   int oldMode = UpdatePerObjectRuntimeFunctionCounters;
   UpdatePerObjectRuntimeFunctionCounters = mode ? 1 : 0;
   return oldMode;
