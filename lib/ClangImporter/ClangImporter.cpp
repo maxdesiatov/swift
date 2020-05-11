@@ -600,10 +600,6 @@ importer::getNormalInvocationArguments(
       });
     }
 
-    if (triple.isOSWASI()) {
-      invocationArgStrs.insert(invocationArgStrs.end(), {"-D_WASI_EMULATED_MMAN"});
-    }
-
     if (triple.isOSWindows()) {
       switch (triple.getArch()) {
       default: llvm_unreachable("unsupported Windows architecture");
