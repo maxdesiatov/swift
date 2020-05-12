@@ -540,7 +540,8 @@ bool swift::performLLVM(const IRGenOptions &Opts,
   // rely on any other LLVM ARC transformations, but we do need ARC
   // contraction to add the objc_retainAutoreleasedReturnValue
   // assembly markers and remove clang.arc.used.
-  if (Opts.shouldOptimize() && !DisableObjCARCContract)
+  if (Opts.shouldOptimize() && !DisableObjCARCContract && 
+    !TargetMachine->getTargetTriple().isOSBinFormatWasm())
     EmitPasses.add(createObjCARCContractPass());
 
   // Set up the final emission passes.
