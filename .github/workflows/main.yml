@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - swiftwasm
+      - swiftwasm-host
       - swiftwasm-release/5.3
   pull_request:
     branches:
       - swiftwasm
+      - swiftwasm-host
       - swiftwasm-release/5.3
 
 jobs:
