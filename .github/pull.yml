@@ -3,6 +3,9 @@ rules:
   - base: swiftwasm
     upstream: master
     mergeMethod: merge
+- base: swiftwasm-host
+    upstream: master
+    mergeMethod: merge
   - base: master
     upstream: apple:master
     mergeMethod: hardreset
