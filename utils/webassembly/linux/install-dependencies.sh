@@ -18,12 +18,6 @@ cd $SWIFT_PATH
 
 ./utils/update-checkout --clone --scheme wasm --skip-repository swift
 
-# Install wasmer
-
-if [ ! -e ~/.wasmer/bin/wasmer ]; then
-  curl https://get.wasmer.io -sSfL | sh
-fi
-
 cd $SOURCE_PATH
 
 if [ -z $(which cmake) ]; then
@@ -35,12 +29,6 @@ if [ -z $(which cmake) ]; then
 fi
 
 cmake --version
-
-$SWIFT_PATH/utils/webassembly/install-wasi-sdk.sh linux ubuntu
-
-# Link wasm32-wasi-unknown to wasm32-wasi because clang finds crt1.o from sysroot
-# with os and environment name `getMultiarchTriple`.
-ln -s wasm32-wasi wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi-unknown
 
 # Install sccache
 
