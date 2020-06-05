@@ -33,6 +33,9 @@ PACKAGE_ARTIFACT="$SOURCE_PATH/swift-wasm-host-DEVELOPMENT-SNAPSHOT-${OS_SUFFIX}
 
 HOST_TOOLCHAIN_DESTDIR=$SOURCE_PATH/host-toolchain-sdk
 
+# Avoid clang headers symlink issues
+mkdir -p $HOST_TOOLCHAIN_SDK/usr/lib/clang/10.0.0
+
 # Build the host toolchain and SDK first.
 $SOURCE_PATH/swift/utils/build-script \
   --preset=$HOST_PRESET \
