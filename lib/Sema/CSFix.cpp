@@ -147,12 +147,9 @@ CoerceToCheckedCast *CoerceToCheckedCast::attempt(ConstraintSystem &cs,
   if (!coerceExpr)
     return nullptr;
 
-  auto subExpr = coerceExpr->getSubExpr();
-  auto castKind =
-      TypeChecker::typeCheckCheckedCast(fromType, toType,
-                                        CheckedCastContextKind::None, cs.DC,
-                                        coerceExpr->getLoc(), subExpr,
-                                        coerceExpr->getCastTypeLoc().getSourceRange());
+  const auto castKind = TypeChecker::typeCheckCheckedCast(
+      fromType, toType, CheckedCastContextKind::None, cs.DC,
+      SourceLoc(), coerceExpr->getSubExpr(), SourceRange());
 
   // Invalid cast.
   if (castKind == CheckedCastKind::Unresolved)
@@ -529,6 +526,23 @@ DefineMemberBasedOnUse::create(ConstraintSystem &cs, Type baseType,
                                ConstraintLocator *locator) {
   return new (cs.getAllocator())
       DefineMemberBasedOnUse(cs, baseType, member, alreadyDiagnosed, locator);
+}
+
+bool DefineMemberBasedOnUnintendedGenericParam::diagnose(
+    const Solution &solution, bool asNote) const {
+  UnintendedExtraGenericParamMemberFailure failure(solution, BaseType, Name,
+                                                   ParamName, getLocator());
+  return failure.diagnose(asNote);
+}
+
+DefineMemberBasedOnUnintendedGenericParam *
+DefineMemberBasedOnUnintendedGenericParam::create(ConstraintSystem &cs,
+                                                  Type baseType,
+                                                  DeclNameRef member,
+                                                  Identifier paramName,
+                                                  ConstraintLocator *locator) {
+  return new (cs.getAllocator()) DefineMemberBasedOnUnintendedGenericParam(
+      cs, baseType, member, paramName, locator);
 }
 
 AllowMemberRefOnExistential *
@@ -1087,28 +1101,6 @@ AllowInOutConversion *AllowInOutConversion::create(ConstraintSystem &cs,
       AllowInOutConversion(cs, argType, paramType, locator);
 }
 
-/// Check whether given `value` type is indeed a the same type as a `RawValue`
-/// type of a given raw representable type.
-static bool isValueOfRawRepresentable(ConstraintSystem &cs,
-                                      Type rawRepresentableType,
-                                      Type valueType) {
-  auto rawType = isRawRepresentable(cs, rawRepresentableType);
-  if (!rawType)
-    return false;
-
-  KnownProtocolKind protocols[] = {
-      KnownProtocolKind::ExpressibleByStringLiteral,
-      KnownProtocolKind::ExpressibleByIntegerLiteral};
-
-  for (auto protocol : protocols) {
-    if (conformsToKnownProtocol(cs, valueType, protocol) &&
-        valueType->isEqual(rawType))
-      return true;
-  }
-
-  return false;
-}
-
 ExpandArrayIntoVarargs *
 ExpandArrayIntoVarargs::attempt(ConstraintSystem &cs, Type argType,
                                 Type paramType,
@@ -1144,32 +1136,32 @@ bool ExpandArrayIntoVarargs::diagnose(const Solution &solution,
   return failure.diagnose(asNote);
 }
 
-ExplicitlyConstructRawRepresentable *
-ExplicitlyConstructRawRepresentable::attempt(ConstraintSystem &cs, Type argType,
-                                             Type paramType,
-                                             ConstraintLocatorBuilder locator) {
-  auto rawRepresentableType = paramType->lookThroughAllOptionalTypes();
-  auto valueType = argType->lookThroughAllOptionalTypes();
-
-  if (isValueOfRawRepresentable(cs, rawRepresentableType, valueType))
-    return new (cs.getAllocator()) ExplicitlyConstructRawRepresentable(
-        cs, valueType, rawRepresentableType, cs.getConstraintLocator(locator));
-
-  return nullptr;
+bool ExplicitlyConstructRawRepresentable::diagnose(const Solution &solution,
+                                                   bool asNote) const {
+  MissingRawRepresentableInitFailure failure(solution, RawReprType,
+                                             ExpectedType, getLocator());
+  return failure.diagnose(asNote);
 }
 
-UseValueTypeOfRawRepresentative *
-UseValueTypeOfRawRepresentative::attempt(ConstraintSystem &cs, Type argType,
-                                         Type paramType,
-                                         ConstraintLocatorBuilder locator) {
-  auto rawRepresentableType = argType->lookThroughAllOptionalTypes();
-  auto valueType = paramType->lookThroughAllOptionalTypes();
+ExplicitlyConstructRawRepresentable *
+ExplicitlyConstructRawRepresentable::create(ConstraintSystem &cs,
+                                            Type rawReprType, Type expectedType,
+                                            ConstraintLocator *locator) {
+  return new (cs.getAllocator()) ExplicitlyConstructRawRepresentable(
+      cs, rawReprType, expectedType, locator);
+}
 
-  if (isValueOfRawRepresentable(cs, rawRepresentableType, valueType))
-    return new (cs.getAllocator()) UseValueTypeOfRawRepresentative(
-        cs, rawRepresentableType, valueType, cs.getConstraintLocator(locator));
+bool UseRawValue::diagnose(const Solution &solution, bool asNote) const {
+  MissingRawValueFailure failure(solution, RawReprType, ExpectedType,
+                                 getLocator());
+  return failure.diagnose(asNote);
+}
 
-  return nullptr;
+UseRawValue *UseRawValue::create(ConstraintSystem &cs, Type rawReprType,
+                                 Type expectedType,
+                                 ConstraintLocator *locator) {
+  return new (cs.getAllocator())
+      UseRawValue(cs, rawReprType, expectedType, locator);
 }
 
 unsigned AllowArgumentMismatch::getParamIdx() const {

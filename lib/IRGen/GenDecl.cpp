@@ -2566,7 +2566,7 @@ void IRGenModule::emitOpaqueTypeDescriptorAccessor(OpaqueTypeDecl *opaque) {
   // Don't emit accessors for functions that are not dynamic or dynamic
   // replacements.
   if (!abstractStorage) {
-    isNativeDynamic = namingDecl->isNativeDynamic();
+    isNativeDynamic = namingDecl->shouldUseNativeDynamicDispatch();
     if (!isNativeDynamic && !isDynamicReplacement)
       return;
   }
@@ -2829,7 +2829,7 @@ llvm::Constant *IRGenModule::getOrCreateGOTEquivalent(llvm::Constant *global,
   }
 
   if (auto *Stats = Context.Stats)
-    Stats->getFrontendCounters().NumGOTEntries++;
+    ++Stats->getFrontendCounters().NumGOTEntries;
 
   // Use the global as the initializer for an anonymous constant. LLVM can treat
   // this as equivalent to the global's GOT entry.
@@ -3314,7 +3314,10 @@ llvm::Constant *IRGenModule::emitSwiftProtocols() {
 }
 
 void IRGenModule::addProtocolConformance(ConformanceDescription &&record) {
-  // Add this protocol conformance.
+
+  emitProtocolConformance(record);
+
+  // Add this conformance to the conformance list.
   ProtocolConformances.push_back(std::move(record));
 }
 
@@ -3322,10 +3325,6 @@ void IRGenModule::addProtocolConformance(ConformanceDescription &&record) {
 llvm::Constant *IRGenModule::emitProtocolConformances() {
   if (ProtocolConformances.empty())
     return nullptr;
-
-  // Emit the conformances.
-  for (const auto &record : ProtocolConformances)
-    emitProtocolConformance(record);
 
   // Define the global variable for the conformance list.
   ConstantInitBuilder builder(*this);
@@ -3678,7 +3677,7 @@ IRGenModule::getAddrOfGenericTypeMetadataAccessFunction(
   size_t numGenericArgs = genericArgs.size();
   if (numGenericArgs > NumDirectGenericTypeMetadataAccessFunctionArgs) {
     paramTypesArray[1] = Int8PtrPtrTy;
-    numParams++;
+    ++numParams;
   } else {
     for (size_t i : indices(genericArgs))
       paramTypesArray[i + 1] = genericArgs[i];

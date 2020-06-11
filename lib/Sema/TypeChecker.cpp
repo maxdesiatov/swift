@@ -424,7 +424,15 @@ bool swift::performTypeLocChecking(ASTContext &Ctx, TypeLoc &T,
   Optional<DiagnosticSuppression> suppression;
   if (!ProduceDiagnostics)
     suppression.emplace(Ctx.Diags);
-  return TypeChecker::validateType(T, resolution);
+
+  // If we've already validated this type, don't do so again.
+  if (T.wasValidated()) {
+    return T.isError();
+  }
+
+  auto type = resolution.resolveType(T.getTypeRepr());
+  T.setType(type);
+  return type->hasError();
 }
 
 /// Expose TypeChecker's handling of GenericParamList to SIL parsing.
@@ -540,11 +548,13 @@ bool swift::typeCheckExpression(DeclContext *DC, Expr *&parsedExpr) {
   return !resultTy;
 }
 
-bool swift::typeCheckAbstractFunctionBodyUntil(AbstractFunctionDecl *AFD,
-                                               SourceLoc EndTypeCheckLoc) {
+bool swift::typeCheckAbstractFunctionBodyAtLoc(AbstractFunctionDecl *AFD,
+                                               SourceLoc TargetLoc) {
   auto &Ctx = AFD->getASTContext();
   DiagnosticSuppression suppression(Ctx.Diags);
-  return !TypeChecker::typeCheckAbstractFunctionBodyUntil(AFD, EndTypeCheckLoc);
+  return !evaluateOrDefault(Ctx.evaluator,
+                            TypeCheckFunctionBodyAtLocRequest{AFD, TargetLoc},
+                            true);
 }
 
 bool swift::typeCheckTopLevelCodeDecl(TopLevelCodeDecl *TLCD) {

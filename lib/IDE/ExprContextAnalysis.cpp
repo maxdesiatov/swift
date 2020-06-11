@@ -38,7 +38,7 @@ using namespace swift;
 using namespace ide;
 
 //===----------------------------------------------------------------------===//
-// typeCheckContextUntil(DeclContext, SourceLoc)
+// typeCheckContextAt(DeclContext, SourceLoc)
 //===----------------------------------------------------------------------===//
 
 namespace {
@@ -80,7 +80,7 @@ void typeCheckContextImpl(DeclContext *DC, SourceLoc Loc) {
     auto &SM = DC->getASTContext().SourceMgr;
     auto bodyRange = AFD->getBodySourceRange();
     if (SM.rangeContainsTokenLoc(bodyRange, Loc)) {
-      swift::typeCheckAbstractFunctionBodyUntil(AFD, Loc);
+      swift::typeCheckAbstractFunctionBodyAtLoc(AFD, Loc);
     } else {
       assert(bodyRange.isInvalid() && "The body should not be parsed if the "
                                       "completion happens in the signature");
@@ -100,27 +100,12 @@ void typeCheckContextImpl(DeclContext *DC, SourceLoc Loc) {
 }
 } // anonymous namespace
 
-void swift::ide::typeCheckContextUntil(DeclContext *DC, SourceLoc Loc) {
+void swift::ide::typeCheckContextAt(DeclContext *DC, SourceLoc Loc) {
   while (isa<AbstractClosureExpr>(DC))
     DC = DC->getParent();
 
   if (auto *TLCD = dyn_cast<TopLevelCodeDecl>(DC)) {
-    // Typecheck all 'TopLevelCodeDecl's up to the target one.
-    // In theory, this is not needed, but it fails to resolve the type of
-    // 'guard'ed variable. e.g.
-    //
-    //   guard value = something() else { fatalError() }
-    //   <complete>
-    // Here, 'value' is '<error type>' unless we explicitly typecheck the
-    // 'guard' statement.
-    SourceFile *SF = DC->getParentSourceFile();
-    for (auto *D : SF->getTopLevelDecls()) {
-      if (auto Code = dyn_cast<TopLevelCodeDecl>(D)) {
-        typeCheckTopLevelCodeDecl(Code);
-        if (Code == TLCD)
-          break;
-      }
-    }
+    typeCheckTopLevelCodeDecl(TLCD);
   } else {
     typeCheckContextImpl(DC, Loc);
   }
@@ -314,8 +299,11 @@ public:
 static void collectPossibleCalleesByQualifiedLookup(
     DeclContext &DC, Type baseTy, DeclNameRef name,
     SmallVectorImpl<FunctionTypeAndDecl> &candidates) {
-  bool isOnMetaType = baseTy->is<AnyMetatypeType>();
   auto baseInstanceTy = baseTy->getMetatypeInstanceType();
+  if (!baseInstanceTy->mayHaveMembers())
+    return;
+
+  bool isOnMetaType = baseTy->is<AnyMetatypeType>();
 
   SmallVector<ValueDecl *, 2> decls;
   if (!DC.lookupQualified(baseInstanceTy,
@@ -404,8 +392,6 @@ static void collectPossibleCalleesByQualifiedLookup(
     baseTy = *baseTyOpt;
   }
   baseTy = baseTy->getWithoutSpecifierType();
-  if (!baseTy->getMetatypeInstanceType()->mayHaveMembers())
-    return;
 
   // Use metatype for lookup 'super.init' if it's inside constructors.
   if (isa<SuperRefExpr>(baseExpr) && isa<ConstructorDecl>(DC) &&
@@ -413,6 +399,22 @@ static void collectPossibleCalleesByQualifiedLookup(
     baseTy = MetatypeType::get(baseTy);
 
   collectPossibleCalleesByQualifiedLookup(DC, baseTy, name, candidates);
+
+  // Add virtual 'subscript<Value>(keyPath: KeyPath<Root, Value>) -> Value'.
+  if (name.getBaseName() == DeclBaseName::createSubscript() &&
+      (baseTy->getAnyNominal() || baseTy->is<ArchetypeType>() ||
+       baseTy->is<TupleType>())) {
+    auto &Ctx = DC.getASTContext();
+
+    auto *kpDecl = Ctx.getKeyPathDecl();
+    Type kpTy = kpDecl->mapTypeIntoContext(kpDecl->getDeclaredInterfaceType());
+    Type kpValueTy = kpTy->castTo<BoundGenericType>()->getGenericArgs()[1];
+    kpTy = BoundGenericType::get(kpDecl, Type(), {baseTy, kpValueTy});
+
+    Type fnTy = FunctionType::get(
+        {AnyFunctionType::Param(kpTy, Ctx.Id_keyPath)}, kpValueTy);
+    candidates.emplace_back(fnTy->castTo<AnyFunctionType>(), nullptr);
+  }
 }
 
 /// For the given \c callExpr, collect possible callee types and declarations.
@@ -882,10 +884,10 @@ class ExprContextAnalyzer {
       break;
     }
     default:
-      if (auto *AFD = dyn_cast<AbstractFunctionDecl>(D)) {
-        assert(isSingleExpressionBodyForCodeCompletion(AFD->getBody()));
+      if (auto *FD = dyn_cast<FuncDecl>(D)) {
+        assert(isSingleExpressionBodyForCodeCompletion(FD->getBody()));
         singleExpressionBody = true;
-        recordPossibleType(getReturnTypeFromContext(AFD));
+        recordPossibleType(getReturnTypeFromContext(FD));
         break;
       }
       llvm_unreachable("Unhandled decl kind.");
@@ -1019,8 +1021,8 @@ public:
         case DeclKind::PatternBinding:
           return true;
         default:
-          if (auto *AFD = dyn_cast<AbstractFunctionDecl>(D))
-            if (auto *body = AFD->getBody())
+          if (auto *FD = dyn_cast<FuncDecl>(D))
+            if (auto *body = FD->getBody())
               return isSingleExpressionBodyForCodeCompletion(body);
           return false;
         }

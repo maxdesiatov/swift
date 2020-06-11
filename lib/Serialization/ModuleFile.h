@@ -20,7 +20,6 @@
 #include "swift/AST/FileUnit.h"
 #include "swift/AST/Module.h"
 #include "swift/AST/RawComment.h"
-#include "swift/AST/TypeLoc.h"
 #include "swift/Serialization/Validation.h"
 #include "swift/Basic/LLVM.h"
 #include "clang/AST/Type.h"
@@ -106,6 +105,10 @@ class ModuleFile
   StringRef MiscVersion;
 
 public:
+  static std::unique_ptr<llvm::MemoryBuffer> getModuleName(ASTContext &Ctx,
+                                                           StringRef modulePath,
+                                                           std::string &Name);
+
   /// Represents another module that has been imported as a dependency.
   class Dependency {
   public:

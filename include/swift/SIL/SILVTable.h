@@ -29,8 +29,6 @@
 #include "swift/SIL/SILAllocated.h"
 #include "swift/SIL/SILDeclRef.h"
 #include "swift/SIL/SILFunction.h"
-#include "llvm/ADT/ilist_node.h"
-#include "llvm/ADT/ilist.h"
 #include "llvm/ADT/Optional.h"
 #include <algorithm>
 
@@ -44,8 +42,7 @@ class SILModule;
 /// A mapping from each dynamically-dispatchable method of a class to the
 /// SILFunction that implements the method for that class.
 /// Note that dead methods are completely removed from the vtable.
-class SILVTable : public llvm::ilist_node<SILVTable>,
-                  public SILAllocated<SILVTable> {
+class SILVTable : public SILAllocated<SILVTable> {
 public:
   // TODO: Entry should include substitutions needed to invoke an overridden
   // generic base class method.
@@ -53,6 +50,9 @@ public:
     enum Kind : uint8_t {
       /// The vtable entry is for a method defined directly in this class.
       Normal,
+      /// The vtable entry is for a method defined directly in this class, and is never overridden
+      /// by subclasses.
+      NormalNonOverridden,
       /// The vtable entry is inherited from the superclass.
       Inherited,
       /// The vtable entry is inherited from the superclass, and overridden
@@ -124,6 +124,9 @@ public:
 
   /// Return all of the method entries.
   ArrayRef<Entry> getEntries() const { return {Entries, NumEntries}; }
+
+  /// Return all of the method entries mutably.
+  MutableArrayRef<Entry> getMutableEntries() { return {Entries, NumEntries}; }
 
   /// Look up the implementation function for the given method.
   Optional<Entry> getEntry(SILModule &M, SILDeclRef method) const;

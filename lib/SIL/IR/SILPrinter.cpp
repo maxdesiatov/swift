@@ -2334,6 +2334,10 @@ public:
     for (auto i : dfi->getParameterIndices()->getIndices())
       *this << ' ' << i;
     *this << "] ";
+    *this << "[results";
+    for (auto i : dfi->getResultIndices()->getIndices())
+      *this << ' ' << i;
+    *this << "] ";
     *this << getIDAndType(dfi->getOriginalFunction());
     if (dfi->hasDerivativeFunctions()) {
       *this << " with_derivative ";
@@ -2793,15 +2797,15 @@ static void printSILFunctions(SILPrintContext &Ctx,
 static void printSILVTables(SILPrintContext &Ctx,
                             const SILModule::VTableListType &VTables) {
   if (!Ctx.sortSIL()) {
-    for (const SILVTable &vt : VTables)
-      vt.print(Ctx.OS(), Ctx.printVerbose());
+    for (const auto &vt : VTables)
+      vt->print(Ctx.OS(), Ctx.printVerbose());
     return;
   }
 
   std::vector<const SILVTable *> vtables;
   vtables.reserve(VTables.size());
-  for (const SILVTable &vt : VTables)
-    vtables.push_back(&vt);
+  for (const auto &vt : VTables)
+    vtables.push_back(vt);
   std::sort(vtables.begin(), vtables.end(),
     [] (const SILVTable *v1, const SILVTable *v2) -> bool {
       StringRef Name1 = v1->getClass()->getName().str();
@@ -3063,7 +3067,7 @@ void SILModule::print(SILPrintContext &PrintCtx, ModuleDecl *M,
   printSILDifferentiabilityWitnesses(PrintCtx,
                                      getDifferentiabilityWitnessList());
   printSILFunctions(PrintCtx, getFunctionList());
-  printSILVTables(PrintCtx, getVTableList());
+  printSILVTables(PrintCtx, getVTables());
   printSILWitnessTables(PrintCtx, getWitnessTableList());
   printSILDefaultWitnessTables(PrintCtx, getDefaultWitnessTableList());
   printSILCoverageMaps(PrintCtx, getCoverageMaps());
@@ -3126,6 +3130,9 @@ void SILVTable::print(llvm::raw_ostream &OS, bool Verbose) const {
     OS << '@' << entry.Implementation->getName();
     switch (entry.TheKind) {
     case SILVTable::Entry::Kind::Normal:
+      break;
+    case SILVTable::Entry::Kind::NormalNonOverridden:
+      OS << " [nonoverridden]";
       break;
     case SILVTable::Entry::Kind::Inherited:
       OS << " [inherited]";
@@ -3374,7 +3381,7 @@ void SILCoverageMap::dump() const {
 #pragma warning(disable : 4996)
 #endif
 
-void SILDebugScope::dump(SourceManager &SM, llvm::raw_ostream &OS,
+void SILDebugScope::print(SourceManager &SM, llvm::raw_ostream &OS,
                          unsigned Indent) const {
   OS << "{\n";
   OS.indent(Indent);
@@ -3384,7 +3391,7 @@ void SILDebugScope::dump(SourceManager &SM, llvm::raw_ostream &OS,
   OS.indent(Indent + 2);
   OS << " parent: ";
   if (auto *P = Parent.dyn_cast<const SILDebugScope *>()) {
-    P->dump(SM, OS, Indent + 2);
+    P->print(SM, OS, Indent + 2);
     OS.indent(Indent + 2);
   }
   else if (auto *F = Parent.dyn_cast<SILFunction *>())
@@ -3396,15 +3403,15 @@ void SILDebugScope::dump(SourceManager &SM, llvm::raw_ostream &OS,
   OS.indent(Indent + 2);
   if (auto *CS = InlinedCallSite) {
     OS << "inlinedCallSite: ";
-    CS->dump(SM, OS, Indent + 2);
+    CS->print(SM, OS, Indent + 2);
     OS.indent(Indent + 2);
   }
   OS << "}\n";
 }
 
-void SILDebugScope::dump(SILModule &Mod) const {
+void SILDebugScope::print(SILModule &Mod) const {
   // We just use the default indent and llvm::errs().
-  dump(Mod.getASTContext().SourceMgr);
+  print(Mod.getASTContext().SourceMgr);
 }
 
 #if SWIFT_COMPILER_IS_MSVC
@@ -3569,7 +3576,7 @@ ID SILPrintContext::getID(const SILNode *node) {
     // If there are no results, make sure we don't reuse that ID.
     auto results = I.getResults();
     if (results.empty()) {
-      idx++;
+      ++idx;
       continue;
     }
 

@@ -193,7 +193,7 @@ public:
       return;
     auto &Parent = Parents.back();
     for (auto CIT = std::find(Parent->child_begin(), Parent->child_end(), C) + 1;
-         CIT != Parent->child_end(); CIT++) {
+         CIT != Parent->child_end(); ++CIT) {
       if (auto TC = dyn_cast<TextComment>(*CIT)) {
         auto Text = TC->getText();
         std::vector<StringRef> Subs;
@@ -330,7 +330,7 @@ std::string swift::ide::removeCodeCompletionTokens(
     }
     if (C == '#' && Ptr <= End - 2 && Ptr[1] == '^') {
       do {
-        Ptr++;
+        ++Ptr;
       } while (Ptr < End && *Ptr != '#');
       if (Ptr == End)
         break;
@@ -455,7 +455,7 @@ void CodeCompletionString::print(raw_ostream &OS) const {
   }
   while (PrevNestingLevel > 0) {
     OS << "#}";
-    PrevNestingLevel--;
+    --PrevNestingLevel;
   }
 }
 
@@ -795,10 +795,10 @@ static ArrayRef<std::pair<StringRef, StringRef>> copyStringPairArray(
 void CodeCompletionResultBuilder::withNestedGroup(
     CodeCompletionString::Chunk::ChunkKind Kind,
     llvm::function_ref<void()> body) {
-  CurrentNestingLevel++;
+  ++CurrentNestingLevel;
   addSimpleChunk(Kind);
   body();
-  CurrentNestingLevel--;
+  --CurrentNestingLevel;
 }
 
 void CodeCompletionResultBuilder::addChunkWithText(
@@ -907,7 +907,7 @@ void CodeCompletionResultBuilder::addCallParameter(Identifier Name,
                                                    bool isAutoClosure,
                                                    bool useUnderscoreLabel,
                                                    bool isLabeledTrailingClosure) {
-  CurrentNestingLevel++;
+  ++CurrentNestingLevel;
   using ChunkKind = CodeCompletionString::Chunk::ChunkKind;
 
   addSimpleChunk(ChunkKind::CallParameterBegin);
@@ -1059,7 +1059,7 @@ void CodeCompletionResultBuilder::addCallParameter(Identifier Name,
 
   if (IsVarArg)
     addEllipsis();
-  CurrentNestingLevel--;
+  --CurrentNestingLevel;
 }
 
 void CodeCompletionResultBuilder::addTypeAnnotation(Type T, PrintOptions PO,
@@ -2762,23 +2762,32 @@ public:
       const AnyFunctionType *AFT, const SubscriptDecl *SD,
       const Optional<SemanticContextKind> SemanticContext = None) {
     foundFunction(AFT);
-    auto genericSig =
-        SD->getInnermostDeclContext()->getGenericSignatureOfContext();
-    AFT = eraseArchetypes(const_cast<AnyFunctionType *>(AFT), genericSig)
-              ->castTo<AnyFunctionType>();
+    if (SD) {
+      auto genericSig =
+          SD->getInnermostDeclContext()->getGenericSignatureOfContext();
+      AFT = eraseArchetypes(const_cast<AnyFunctionType *>(AFT), genericSig)
+                ->castTo<AnyFunctionType>();
+    }
 
     CommandWordsPairs Pairs;
     CodeCompletionResultBuilder Builder(
-        Sink, CodeCompletionResult::ResultKind::Declaration,
+        Sink,
+        SD ? CodeCompletionResult::ResultKind::Declaration
+           : CodeCompletionResult::ResultKind::Pattern,
         SemanticContext ? *SemanticContext : getSemanticContextKind(SD),
         expectedTypeContext);
-    Builder.setAssociatedDecl(SD);
-    setClangDeclKeywords(SD, Pairs, Builder);
+    if (SD) {
+      Builder.setAssociatedDecl(SD);
+      setClangDeclKeywords(SD, Pairs, Builder);
+    }
     if (!HaveLParen)
       Builder.addLeftBracket();
     else
       Builder.addAnnotatedLeftBracket();
-    addCallArgumentPatterns(Builder, AFT, SD->getIndices());
+    ArrayRef<const ParamDecl *> declParams;
+    if (SD)
+      declParams = SD->getIndices()->getArray();
+    addCallArgumentPatterns(Builder, AFT->getParams(), declParams);
     if (!HaveLParen)
       Builder.addRightBracket();
     else
@@ -3640,7 +3649,7 @@ public:
         Builder.addBaseName(IndexStr.str());
       }
       addTypeAnnotation(Builder, TupleElt.getType());
-      Index++;
+      ++Index;
     }
     return true;
   }
@@ -4489,6 +4498,51 @@ public:
 
     // The platform names should be identical to those in @available.
     getAttributeDeclParamCompletions(DAK_Available, 0);
+  }
+
+  void getSelfTypeCompletionInDeclContext(SourceLoc Loc, bool isForDeclResult) {
+    const DeclContext *typeDC = CurrDeclContext->getInnermostTypeContext();
+    if (!typeDC)
+      return;
+
+    // For protocols, there's a 'Self' generic parameter.
+    if (typeDC->getSelfProtocolDecl())
+      return;
+
+    Type selfType =
+        CurrDeclContext->mapTypeIntoContext(typeDC->getSelfInterfaceType());
+
+    if (typeDC->getSelfClassDecl()) {
+      // In classes, 'Self' can be used in result type of func, subscript and
+      // computed property, or inside function bodies.
+      bool canUseDynamicSelf = false;
+      if (isForDeclResult) {
+        canUseDynamicSelf = true;
+      } else {
+        const auto *checkDC = CurrDeclContext;
+        if (isa<TypeAliasDecl>(checkDC))
+          checkDC = checkDC->getParent();
+
+        if (const auto *AFD = checkDC->getInnermostMethodContext()) {
+          canUseDynamicSelf = Ctx.SourceMgr.rangeContainsTokenLoc(
+              AFD->getBodySourceRange(), Loc);
+        }
+      }
+      if (!canUseDynamicSelf)
+        return;
+      // 'Self' in class is a dynamic type.
+      selfType = DynamicSelfType::get(selfType, Ctx);
+    } else {
+      // In enums and structs, 'Self' is just an alias for the nominal type,
+      // and can be used anywhere.
+    }
+
+    CodeCompletionResultBuilder Builder(
+        Sink, CodeCompletionResult::ResultKind::Keyword,
+        SemanticContextKind::CurrentNominal, expectedTypeContext);
+    Builder.addKeyword("Self");
+    Builder.setKeywordKind(CodeCompletionKeywordKind::kw_Self);
+    addTypeAnnotation(Builder, selfType);
   }
 
   void getTypeCompletionsInDeclContext(SourceLoc Loc,
@@ -5734,9 +5788,11 @@ void CodeCompletionCallbacksImpl::doneParsing() {
       CurDeclContext = DC;
   }
 
-  typeCheckContextUntil(
+  typeCheckContextAt(
       CurDeclContext,
-      CurDeclContext->getASTContext().SourceMgr.getCodeCompletionLoc());
+      ParsedExpr
+          ? ParsedExpr->getLoc()
+          : CurDeclContext->getASTContext().SourceMgr.getCodeCompletionLoc());
 
   // Add keywords even if type checking fails completely.
   addKeywords(CompletionContext.getResultSink(), MaybeFuncBody);
@@ -5783,6 +5839,7 @@ void CodeCompletionCallbacksImpl::doneParsing() {
   auto DoPostfixExprBeginning = [&] (){
     SourceLoc Loc = P.Context.SourceMgr.getCodeCompletionLoc();
     Lookup.getValueCompletionsInDeclContext(Loc);
+    Lookup.getSelfTypeCompletionInDeclContext(Loc, /*isForDeclResult=*/false);
   };
 
   switch (Kind) {
@@ -5933,8 +5990,10 @@ void CodeCompletionCallbacksImpl::doneParsing() {
 
   case CompletionKind::TypeDeclResultBeginning:
   case CompletionKind::TypeSimpleBeginning: {
-    Lookup.getTypeCompletionsInDeclContext(
-        P.Context.SourceMgr.getCodeCompletionLoc());
+    auto Loc = Context.SourceMgr.getCodeCompletionLoc();
+    Lookup.getTypeCompletionsInDeclContext(Loc);
+    Lookup.getSelfTypeCompletionInDeclContext(
+        Loc, Kind == CompletionKind::TypeDeclResultBeginning);
     break;
   }
 
@@ -6013,7 +6072,7 @@ void CodeCompletionCallbacksImpl::doneParsing() {
     Lookup.getUnresolvedMemberCompletions(ContextInfo.getPossibleTypes());
     break;
   }
-  case CompletionKind::CallArg : {
+  case CompletionKind::CallArg: {
     ExprContextInfo ContextInfo(CurDeclContext, CodeCompleteTokenExpr);
 
     bool shouldPerformGlobalCompletion = true;
@@ -6022,9 +6081,12 @@ void CodeCompletionCallbacksImpl::doneParsing() {
         !ContextInfo.getPossibleCallees().empty()) {
       Lookup.setHaveLParen(true);
       for (auto &typeAndDecl : ContextInfo.getPossibleCallees()) {
-        if (auto SD = dyn_cast_or_null<SubscriptDecl>(typeAndDecl.Decl)) {
-          Lookup.addSubscriptCallPattern(typeAndDecl.Type, SD,
-                                         typeAndDecl.SemanticContext);
+        auto apply = ContextInfo.getAnalyzedExpr();
+        if (apply && isa<SubscriptExpr>(apply)) {
+          Lookup.addSubscriptCallPattern(
+              typeAndDecl.Type,
+              dyn_cast_or_null<SubscriptDecl>(typeAndDecl.Decl),
+              typeAndDecl.SemanticContext);
         } else {
           Lookup.addFunctionCallPattern(
               typeAndDecl.Type,
@@ -6311,7 +6373,7 @@ void PrintingCodeCompletionConsumer::handleResults(
   for (auto Result : Results) {
     if (!IncludeKeywords && Result->getKind() == CodeCompletionResult::Keyword)
       continue;
-    NumResults++;
+    ++NumResults;
   }
   if (NumResults == 0)
     return;

@@ -78,7 +78,7 @@ void LookupResult::filter(
   Results.erase(std::remove_if(Results.begin(), Results.end(),
                                [&](LookupResultEntry result) -> bool {
                                  auto isInner = index < originalFirstOuter;
-                                 index++;
+                                 ++index;
                                  if (pred(result, !isInner))
                                    return false;
 
@@ -86,7 +86,7 @@ void LookupResult::filter(
                                  // an inner result, the outer results need to
                                  // shift down.
                                  if (isInner)
-                                   IndexOfFirstOuterResult--;
+                                   --IndexOfFirstOuterResult;
                                  return true;
                                }),
                 Results.end());
@@ -2296,12 +2296,11 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
                                    CustomAttr *attr, DeclContext *dc) const {
   // Find the types referenced by the custom attribute.
   auto &ctx = dc->getASTContext();
-  TypeLoc &typeLoc = attr->getTypeLoc();
   DirectlyReferencedTypeDecls decls;
-  if (auto typeRepr = typeLoc.getTypeRepr()) {
+  if (auto *typeRepr = attr->getTypeRepr()) {
     decls = directReferencesForTypeRepr(
         evaluator, ctx, typeRepr, dc);
-  } else if (Type type = typeLoc.getType()) {
+  } else if (Type type = attr->getType()) {
     decls = directReferencesForType(type);
   }
 
@@ -2316,7 +2315,7 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
   // If we found declarations that are associated types, look outside of
   // the current context to see if we can recover.
   if (declsAreAssociatedTypes(decls)) {
-    if (auto typeRepr = typeLoc.getTypeRepr()) {
+    if (auto typeRepr = attr->getTypeRepr()) {
       if (auto identTypeRepr = dyn_cast<SimpleIdentTypeRepr>(typeRepr)) {
         auto assocType = cast<AssociatedTypeDecl>(decls.front());
 
@@ -2348,7 +2347,8 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
               identTypeRepr
             };
 
-            typeLoc = TypeLoc(IdentTypeRepr::create(ctx, components));
+            auto *newTE = new (ctx) TypeExpr(IdentTypeRepr::create(ctx, components));
+            attr->resetTypeInformation(newTE);
             return nominal;
           }
         }

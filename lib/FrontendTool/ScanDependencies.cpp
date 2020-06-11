@@ -69,16 +69,16 @@ static std::vector<ModuleDependencyID> resolveDirectDependencies(
   auto ModuleCachePath = getModuleCachePathFromClang(ctx
     .getClangModuleLoader()->getClangInstance());
   auto &FEOpts = instance.getInvocation().getFrontendOptions();
+  ModuleInterfaceLoaderOptions LoaderOpts(FEOpts);
   InterfaceSubContextDelegateImpl ASTDelegate(ctx.SourceMgr, ctx.Diags,
                                               ctx.SearchPathOpts, ctx.LangOpts,
+                                              LoaderOpts,
                                               ctx.getClangModuleLoader(),
                                               /*buildModuleCacheDirIfAbsent*/false,
                                               ModuleCachePath,
                                               FEOpts.PrebuiltModuleCachePath,
                                               FEOpts.SerializeModuleInterfaceDependencyHashes,
-                                              FEOpts.TrackSystemDeps,
-                                              FEOpts.RemarkOnRebuildFromModuleInterface,
-                                              FEOpts.DisableInterfaceFileLock);
+                                              FEOpts.TrackSystemDeps);
   // Find the dependencies of every module this module directly depends on.
   std::vector<ModuleDependencyID> result;
   for (auto dependsOn : knownDependencies.getModuleDependencies()) {
@@ -138,7 +138,38 @@ static std::vector<ModuleDependencyID> resolveDirectDependencies(
       }
     }
   }
-
+  // Only resolve cross-import overlays when this is the main module.
+  // For other modules, these overlays are explicitly written.
+  bool isMainModule =
+    instance.getMainModule()->getName().str() == module.first &&
+    module.second == ModuleDependenciesKind::Swift;
+  if (isMainModule) {
+    // Modules explicitly imported. Only these can be secondary module.
+    std::vector<ModuleDependencyID> explicitImports = result;
+    for (unsigned I = 0; I != result.size(); ++I) {
+      auto dep = result[I];
+      auto moduleName = dep.first;
+      auto dependencies = *cache.findDependencies(moduleName, dep.second);
+      // Collect a map from secondary module name to cross-import overlay names.
+      auto overlayMap = dependencies.collectCrossImportOverlayNames(
+        instance.getASTContext(), moduleName);
+      if (overlayMap.empty())
+        continue;
+      std::for_each(explicitImports.begin(), explicitImports.end(),
+                    [&](ModuleDependencyID Id) {
+        // check if any explicitly imported modules can serve as a secondary
+        // module, and add the overlay names to the dependencies list.
+        for (auto overlayName: overlayMap[Id.first]) {
+          if (auto found = ctx.getModuleDependencies(overlayName.str(),
+                                                     /*onlyClangModule=*/false,
+                                                     cache,
+                                                     ASTDelegate)) {
+            result.push_back({overlayName.str(), found->getKind()});
+          }
+        }
+      });
+    }
+  }
   return result;
 }
 

@@ -47,6 +47,8 @@ enum class WellKnownFunction {
   AllocateUninitializedArray,
   // Array._endMutation
   EndArrayMutation,
+  // _finalizeUninitializedArray
+  FinalizeUninitializedArray,
   // Array.append(_:)
   ArrayAppendElement,
   // String.init()
@@ -75,6 +77,8 @@ static llvm::Optional<WellKnownFunction> classifyFunction(SILFunction *fn) {
     return WellKnownFunction::AllocateUninitializedArray;
   if (fn->hasSemanticsAttr(semantics::ARRAY_END_MUTATION))
     return WellKnownFunction::EndArrayMutation;
+  if (fn->hasSemanticsAttr(semantics::ARRAY_FINALIZE_INTRINSIC))
+    return WellKnownFunction::FinalizeUninitializedArray;
   if (fn->hasSemanticsAttr(semantics::ARRAY_APPEND_ELEMENT))
     return WellKnownFunction::ArrayAppendElement;
   if (fn->hasSemanticsAttr(semantics::STRING_INIT_EMPTY))
@@ -852,7 +856,7 @@ ConstExprFunctionState::computeWellKnownCallResult(ApplyInst *apply,
   switch (callee) {
   case WellKnownFunction::AssertionFailure: {
     SmallString<4> message;
-    for (unsigned i = 0; i < apply->getNumArguments(); i++) {
+    for (unsigned i = 0, e = apply->getNumArguments(); i < e; ++i) {
       SILValue argument = apply->getArgument(i);
       SymbolicValue argValue = getConstantValue(argument);
       Optional<StringRef> stringOpt =
@@ -959,6 +963,21 @@ ConstExprFunctionState::computeWellKnownCallResult(ApplyInst *apply,
            "unexpected Array._endMutation() signature");
 
     // _endMutation is a no-op.
+    return None;
+  }
+  case WellKnownFunction::FinalizeUninitializedArray: {
+    // This function has the following signature in SIL:
+    //    (Array<Element>) -> Array<Element>
+    assert(conventions.getNumParameters() == 1 &&
+           conventions.getNumDirectSILResults() == 1 &&
+           conventions.getNumIndirectSILResults() == 0 &&
+           "unexpected _finalizeUninitializedArray() signature");
+
+    auto result = getConstantValue(apply->getOperand(1));
+    if (!result.isConstant())
+      return result;
+    // Semantically, it's an identity function.
+    setValue(apply, result);
     return None;
   }
   case WellKnownFunction::ArrayAppendElement: {

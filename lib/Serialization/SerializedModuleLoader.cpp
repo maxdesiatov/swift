@@ -275,6 +275,12 @@ std::error_code SerializedModuleLoaderBase::openModuleDocFileIfPresent(
   return std::error_code();
 }
 
+std::unique_ptr<llvm::MemoryBuffer>
+SerializedModuleLoaderBase::getModuleName(ASTContext &Ctx, StringRef modulePath,
+                                          std::string &Name) {
+  return ModuleFile::getModuleName(Ctx, modulePath, Name);
+}
+
 std::error_code
 SerializedModuleLoaderBase::openModuleSourceInfoFileIfPresent(
     AccessPathElem ModuleID,
@@ -684,6 +690,8 @@ FileUnit *SerializedModuleLoaderBase::loadAST(
       M.setTestingEnabled();
     if (extendedInfo.arePrivateImportsEnabled())
       M.setPrivateImportsEnabled();
+    if (extendedInfo.isImplicitDynamicEnabled())
+      M.setImplicitDynamicEnabled();
 
     auto diagLocOrInvalid = diagLoc.getValueOr(SourceLoc());
     loadInfo.status =

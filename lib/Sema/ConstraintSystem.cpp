@@ -88,15 +88,15 @@ ConstraintSystem::~ConstraintSystem() {
 }
 
 void ConstraintSystem::incrementScopeCounter() {
-  CountScopes++;
+  ++CountScopes;
   // FIXME: (transitional) increment the redundant "always-on" counter.
   if (auto *Stats = getASTContext().Stats)
-    Stats->getFrontendCounters().NumConstraintScopes++;
+    ++Stats->getFrontendCounters().NumConstraintScopes;
 }
 
 void ConstraintSystem::incrementLeafScopes() {
   if (auto *Stats = getASTContext().Stats)
-    Stats->getFrontendCounters().NumLeafScopes++;
+    ++Stats->getFrontendCounters().NumLeafScopes;
 }
 
 bool ConstraintSystem::hasFreeTypeVariables() {
@@ -590,6 +590,8 @@ static void extendDepthMap(
    Expr *expr,
    llvm::DenseMap<Expr *, std::pair<unsigned, Expr *>> &depthMap) {
   class RecordingTraversal : public ASTWalker {
+    SmallVector<ClosureExpr *, 4> Closures;
+
   public:
     llvm::DenseMap<Expr *, std::pair<unsigned, Expr *>> &DepthMap;
     unsigned Depth = 0;
@@ -600,13 +602,37 @@ static void extendDepthMap(
 
     std::pair<bool, Expr *> walkToExprPre(Expr *E) override {
       DepthMap[E] = {Depth, Parent.getAsExpr()};
-      Depth++;
+      ++Depth;
+
+      if (auto CE = dyn_cast<ClosureExpr>(E))
+        Closures.push_back(CE);
+
       return { true, E };
     }
 
     Expr *walkToExprPost(Expr *E) override {
-      Depth--;
+      if (auto CE = dyn_cast<ClosureExpr>(E)) {
+        assert(Closures.back() == CE);
+        Closures.pop_back();
+      }
+
+      --Depth;
       return E;
+    }
+
+    std::pair<bool, Stmt *> walkToStmtPre(Stmt *S) override {
+      if (auto RS = dyn_cast<ReturnStmt>(S)) {
+        // For return statements, treat the parent of the return expression
+        // as the closure itself.
+        if (RS->hasResult() && !Closures.empty()) {
+          llvm::SaveAndRestore<ParentTy> SavedParent(Parent, Closures.back());
+          auto E = RS->getResult();
+          E->walk(*this);
+          return { false, S };
+        }
+      }
+
+      return { true, S };
     }
   };
 
@@ -629,9 +655,9 @@ Optional<std::pair<unsigned, Expr *>> ConstraintSystem::getExprDepthAndParent(
   return None;
 }
 
-Type ConstraintSystem::openUnboundGenericType(UnboundGenericType *unbound,
-                                              ConstraintLocatorBuilder locator,
-                                              OpenedTypeMap &replacements) {
+Type
+ConstraintSystem::openUnboundGenericType(UnboundGenericType *unbound,
+                                         ConstraintLocatorBuilder locator) {
   auto unboundDecl = unbound->getDecl();
   auto parentTy = unbound->getParent();
   if (parentTy) {
@@ -641,6 +667,7 @@ Type ConstraintSystem::openUnboundGenericType(UnboundGenericType *unbound,
   }
 
   // Open up the generic type.
+  OpenedTypeMap replacements;
   openGeneric(unboundDecl->getDeclContext(), unboundDecl->getGenericSignature(),
               locator, replacements);
 
@@ -764,8 +791,7 @@ Type ConstraintSystem::openUnboundGenericType(
 
   type = type.transform([&](Type type) -> Type {
       if (auto unbound = type->getAs<UnboundGenericType>()) {
-        OpenedTypeMap replacements;
-        return openUnboundGenericType(unbound, locator, replacements);
+        return openUnboundGenericType(unbound, locator);
       }
 
       return type;
@@ -927,6 +953,72 @@ TypeVariableType *ConstraintSystem::isRepresentativeFor(
     return nullptr;
 
   return *member;
+}
+
+static Optional<std::pair<VarDecl *, Type>>
+getPropertyWrapperInformationFromOverload(
+    SelectedOverload resolvedOverload, DeclContext *DC,
+    llvm::function_ref<Optional<std::pair<VarDecl *, Type>>(VarDecl *)>
+        getInformation) {
+  if (auto *decl =
+          dyn_cast_or_null<VarDecl>(resolvedOverload.choice.getDeclOrNull())) {
+    if (auto declInformation = getInformation(decl)) {
+      Type type;
+      VarDecl *memberDecl;
+      std::tie(memberDecl, type) = *declInformation;
+      if (Type baseType = resolvedOverload.choice.getBaseType()) {
+        type =
+            baseType->getTypeOfMember(DC->getParentModule(), memberDecl, type);
+      }
+      return std::make_pair(decl, type);
+    }
+  }
+  return None;
+}
+
+Optional<std::pair<VarDecl *, Type>>
+ConstraintSystem::getStorageWrapperInformation(
+    SelectedOverload resolvedOverload) {
+  return getPropertyWrapperInformationFromOverload(
+      resolvedOverload, DC,
+      [](VarDecl *decl) -> Optional<std::pair<VarDecl *, Type>> {
+        if (!decl->hasAttachedPropertyWrapper())
+          return None;
+
+        auto storageWrapper = decl->getPropertyWrapperStorageWrapper();
+        if (!storageWrapper)
+          return None;
+
+        return std::make_pair(storageWrapper,
+                              storageWrapper->getInterfaceType());
+      });
+}
+
+Optional<std::pair<VarDecl *, Type>>
+ConstraintSystem::getPropertyWrapperInformation(
+    SelectedOverload resolvedOverload) {
+  return getPropertyWrapperInformationFromOverload(
+      resolvedOverload, DC,
+      [](VarDecl *decl) -> Optional<std::pair<VarDecl *, Type>> {
+        if (!decl->hasAttachedPropertyWrapper())
+          return None;
+
+        return std::make_pair(decl,
+                              decl->getPropertyWrapperBackingPropertyType());
+      });
+}
+
+Optional<std::pair<VarDecl *, Type>>
+ConstraintSystem::getWrappedPropertyInformation(
+    SelectedOverload resolvedOverload) {
+  return getPropertyWrapperInformationFromOverload(
+      resolvedOverload, DC,
+      [](VarDecl *decl) -> Optional<std::pair<VarDecl *, Type>> {
+        if (auto wrapped = decl->getOriginalWrappedProperty())
+          return std::make_pair(decl, wrapped->getInterfaceType());
+
+        return None;
+      });
 }
 
 /// Does a var or subscript produce an l-value?
@@ -1912,7 +2004,7 @@ isInvalidPartialApplication(ConstraintSystem &cs,
   // application level already.
   unsigned level = 0;
   if (!baseTy->is<MetatypeType>())
-    level++;
+    ++level;
 
   if (auto *call = dyn_cast_or_null<CallExpr>(cs.getParentExpr(UDE))) {
     level += 1;
@@ -3192,7 +3284,7 @@ static void extendPreorderIndexMap(
 
     std::pair<bool, Expr *> walkToExprPre(Expr *E) override {
       IndexMap[E] = Index;
-      Index++;
+      ++Index;
       return { true, E };
     }
   };
@@ -4297,9 +4389,12 @@ void SolutionApplicationTarget::maybeApplyPropertyWrapper() {
       isImplicit = true;
     }
 
-    auto typeExpr = TypeExpr::createImplicitHack(
-        outermostWrapperAttr->getTypeLoc().getLoc(),
-        outermostWrapperType, ctx);
+    SourceLoc typeLoc;
+    if (auto *repr = outermostWrapperAttr->getTypeRepr()) {
+      typeLoc = repr->getLoc();
+    }
+    auto typeExpr =
+        TypeExpr::createImplicitHack(typeLoc, outermostWrapperType, ctx);
     backingInitializer = CallExpr::create(
         ctx, typeExpr, outermostArg,
         outermostWrapperAttr->getArgumentLabels(),
@@ -4313,7 +4408,8 @@ void SolutionApplicationTarget::maybeApplyPropertyWrapper() {
   // the initializer type later.
   expression.wrappedVar = singleVar;
   expression.expression = backingInitializer;
-  expression.convertType = outermostWrapperAttr->getTypeLoc();
+  expression.convertType = {outermostWrapperAttr->getTypeRepr(),
+                            outermostWrapperAttr->getType()};
 }
 
 SolutionApplicationTarget SolutionApplicationTarget::forInitialization(
@@ -4525,7 +4621,7 @@ void ConstraintSystem::maybeProduceFallbackDiagnostic(
 SourceLoc constraints::getLoc(ASTNode anchor) {
   if (auto *E = anchor.dyn_cast<Expr *>()) {
     return E->getLoc();
-  } else if (auto *T = anchor.dyn_cast<TypeLoc *>()) {
+  } else if (auto *T = anchor.dyn_cast<TypeRepr *>()) {
     return T->getLoc();
   } else if (auto *V = anchor.dyn_cast<Decl *>()) {
     if (auto VD = dyn_cast<VarDecl>(V))

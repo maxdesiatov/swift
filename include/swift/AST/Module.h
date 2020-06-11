@@ -391,6 +391,11 @@ public:
   /// Add a file declaring a cross-import overlay.
   void addCrossImportOverlayFile(StringRef file);
 
+  /// Collect cross-import overlay names from a given YAML file path.
+  static llvm::SmallSetVector<Identifier, 4>
+  collectCrossImportOverlay(ASTContext &ctx, StringRef file,
+                            StringRef moduleName, StringRef& bystandingModule);
+
   /// If this method returns \c false, the module does not declare any
   /// cross-import overlays.
   ///
@@ -547,6 +552,10 @@ public:
   bool isMainModule() const {
     return Bits.ModuleDecl.IsMainModule;
   }
+
+  /// For the main module, retrieves the list of primary source files being
+  /// compiled, that is, the files we're generating code for.
+  ArrayRef<SourceFile *> getPrimarySourceFiles() const;
 
   /// Retrieve the top-level module. If this module is already top-level, this
   /// returns itself. If this is a submodule such as \c Foo.Bar.Baz, this

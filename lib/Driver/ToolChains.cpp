@@ -254,7 +254,8 @@ void ToolChain::addCommonFrontendArgs(const OutputInfo &OI,
   inputArgs.AddLastArg(arguments,
                        options::OPT_verify_incremental_dependencies);
   inputArgs.AddLastArg(arguments,
-                       options::OPT_experimental_private_intransitive_dependencies);
+                       options::OPT_enable_direct_intramodule_dependencies,
+                       options::OPT_disable_direct_intramodule_dependencies);
 
   // Pass on any build config options
   inputArgs.AddAllArgs(arguments, options::OPT_D);
@@ -289,8 +290,6 @@ void ToolChain::addCommonFrontendArgs(const OutputInfo &OI,
     if (!OptArg || OptArg->getOption().matches(options::OPT_Onone))
       arguments.push_back("-enable-anonymous-context-mangled-names");
   }
-
-  inputArgs.AddLastArg(arguments, options::OPT_disable_leaf_frame_pointer_elim);
 
   // Pass through any subsystem flags.
   inputArgs.AddAllArgs(arguments, options::OPT_Xllvm);

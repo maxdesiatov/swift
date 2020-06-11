@@ -152,6 +152,9 @@ static bool readOptionsBlock(llvm::BitstreamCursor &cursor,
     case options_block::ARE_PRIVATE_IMPORTS_ENABLED:
       extendedInfo.setPrivateImportsEnabled(true);
       break;
+    case options_block::IS_IMPLICIT_DYNAMIC_ENABLED:
+      extendedInfo.setImplicitDynamicEnabled(true);
+      break;
     case options_block::RESILIENCE_STRATEGY:
       unsigned Strategy;
       options_block::ResilienceStrategyLayout::readRecord(scratch, Strategy);
@@ -2188,6 +2191,30 @@ TypeDecl *ModuleFile::lookupLocalType(StringRef MangledName) {
     return nullptr;
 
   return cast<TypeDecl>(getDecl(*iter));
+}
+
+std::unique_ptr<llvm::MemoryBuffer>
+ModuleFile::getModuleName(ASTContext &Ctx, StringRef modulePath,
+                          std::string &Name) {
+  // Open the module file
+  auto &fs = *Ctx.SourceMgr.getFileSystem();
+  auto moduleBuf = fs.getBufferForFile(modulePath);
+  if (!moduleBuf)
+    return nullptr;
+
+  // Load the module file without validation.
+  std::unique_ptr<ModuleFile> loadedModuleFile;
+  ExtendedValidationInfo ExtInfo;
+  bool isFramework = false;
+  serialization::ValidationInfo loadInfo =
+     ModuleFile::load(modulePath.str(),
+                      std::move(moduleBuf.get()),
+                      nullptr,
+                      nullptr,
+                      /*isFramework*/isFramework, loadedModuleFile,
+                      &ExtInfo);
+  Name = loadedModuleFile->Name;
+  return std::move(loadedModuleFile->ModuleInputBuffer);
 }
 
 OpaqueTypeDecl *ModuleFile::lookupOpaqueResultType(StringRef MangledName) {

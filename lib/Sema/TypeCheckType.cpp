@@ -902,7 +902,7 @@ Type TypeChecker::applyUnboundGenericArguments(
 
   // Realize the types of the generic arguments and add them to the
   // substitution map.
-  for (unsigned i = 0, e = genericArgs.size(); i < e; i++) {
+  for (unsigned i = 0, e = genericArgs.size(); i < e; ++i) {
     auto origTy = genericSig->getInnermostGenericParams()[i];
     auto substTy = genericArgs[i];
 
@@ -1688,20 +1688,6 @@ static bool validateAutoClosureAttributeUse(DiagnosticEngine &Diags,
   return !isValid;
 }
 
-bool TypeChecker::validateType(TypeLoc &Loc, TypeResolution resolution) {
-  // If we've already validated this type, don't do so again.
-  if (Loc.wasValidated())
-    return Loc.isError();
-
-  if (auto *Stats = resolution.getASTContext().Stats)
-    Stats->getFrontendCounters().NumTypesValidated++;
-
-  auto type = resolution.resolveType(Loc.getTypeRepr());
-  Loc.setType(type);
-
-  return type->hasError();
-}
-
 namespace {
   const auto DefaultParameterConvention = ParameterConvention::Direct_Unowned;
   const auto DefaultResultConvention = ResultConvention::Unowned;
@@ -1996,6 +1982,9 @@ Type TypeResolver::resolveAttributedType(TypeAttributes &attrs,
 
   // Remember whether this is a function parameter.
   bool isParam = options.is(TypeResolverContext::FunctionInput);
+
+  // Remember whether this is a function result.
+  bool isResult = options.is(TypeResolverContext::FunctionResult);
 
   // Remember whether this is a variadic function parameter.
   bool isVariadicFunctionParam =
@@ -2401,6 +2390,10 @@ Type TypeResolver::resolveAttributedType(TypeAttributes &attrs,
   }
 
   if (attrs.has(TAK_noDerivative)) {
+    // @noDerivative is only valid on function parameters, or on function
+    // results in SIL.
+    bool isNoDerivativeAllowed =
+        isParam || (isResult && (options & TypeResolutionFlags::SILType));
     auto *SF = DC->getParentSourceFile();
     if (SF && !isDifferentiableProgrammingEnabled(*SF)) {
       diagnose(
@@ -2408,8 +2401,7 @@ Type TypeResolver::resolveAttributedType(TypeAttributes &attrs,
           diag::differentiable_programming_attr_used_without_required_module,
           TypeAttributes::getAttrName(TAK_noDerivative),
           Context.Id_Differentiation);
-    } else if (!isParam) {
-      // @noDerivative is only valid on parameters.
+    } else if (!isNoDerivativeAllowed) {
       diagnose(attrs.getLoc(TAK_noDerivative),
                (isVariadicFunctionParam
                     ? diag::attr_not_on_variadic_parameters
@@ -2652,7 +2644,9 @@ Type TypeResolver::resolveASTFunctionType(
     return Type();
   }
 
-  Type outputTy = resolveType(repr->getResultTypeRepr(), options);
+  auto resultOptions = options.withoutContext();
+  resultOptions.setContext(TypeResolverContext::FunctionResult);
+  Type outputTy = resolveType(repr->getResultTypeRepr(), resultOptions);
   if (!outputTy || outputTy->hasError()) return outputTy;
 
   // If this is a function type without parens around the parameter list,
@@ -3099,6 +3093,9 @@ bool TypeResolver::resolveSingleSILResult(TypeRepr *repr,
   Type type;
   auto convention = DefaultResultConvention;
   bool isErrorResult = false;
+  auto differentiability =
+      SILResultDifferentiability::DifferentiableOrNotApplicable;
+  options.setContext(TypeResolverContext::FunctionResult);
 
   if (auto attrRepr = dyn_cast<AttributedTypeRepr>(repr)) {
     // Copy the attributes out; we're going to destructively modify them.
@@ -3124,6 +3121,12 @@ bool TypeResolver::resolveSingleSILResult(TypeRepr *repr,
 
       // Error results are always implicitly @owned.
       convention = ResultConvention::Owned;
+    }
+
+    // Recognize `@noDerivative`.
+    if (attrs.has(TAK_noDerivative)) {
+      attrs.clearAttribute(TAK_noDerivative);
+      differentiability = SILResultDifferentiability::NotDifferentiable;
     }
 
     // Recognize result conventions.
@@ -3160,7 +3163,8 @@ bool TypeResolver::resolveSingleSILResult(TypeRepr *repr,
   }
 
   assert(!isErrorResult || convention == ResultConvention::Owned);
-  SILResultInfo resolvedResult(type->getCanonicalType(), convention);
+  SILResultInfo resolvedResult(type->getCanonicalType(), convention,
+                               differentiability);
 
   if (!isErrorResult) {
     ordinaryResults.push_back(resolvedResult);
@@ -3394,7 +3398,7 @@ Type TypeResolver::resolveImplicitlyUnwrappedOptionalType(
     break;
   }
 
-  if (doDiag) {
+  if (doDiag && !options.contains(TypeResolutionFlags::SilenceErrors)) {
     // Prior to Swift 5, we allow 'as T!' and turn it into a disjunction.
     if (Context.isSwiftVersionAtLeast(5)) {
       diagnose(repr->getStartLoc(),
@@ -3864,8 +3868,9 @@ void TypeChecker::checkUnsupportedProtocolType(
   visitor.visitRequirements(genericParams->getRequirements());
 }
 
-Type swift::resolveCustomAttrType(CustomAttr *attr, DeclContext *dc,
-                                  CustomAttrTypeKind typeKind) {
+Type CustomAttrTypeRequest::evaluate(Evaluator &eval, CustomAttr *attr,
+                                     DeclContext *dc,
+                                     CustomAttrTypeKind typeKind) const {
   TypeResolutionOptions options(TypeResolverContext::PatternBindingDecl);
 
   // Property delegates allow their type to be an unbound generic.
@@ -3873,15 +3878,13 @@ Type swift::resolveCustomAttrType(CustomAttr *attr, DeclContext *dc,
     options |= TypeResolutionFlags::AllowUnboundGenerics;
 
   ASTContext &ctx = dc->getASTContext();
-  auto resolution = TypeResolution::forContextual(dc, options);
-  if (TypeChecker::validateType(attr->getTypeLoc(), resolution))
-    return Type();
+  auto type = TypeResolution::forContextual(dc, options)
+                  .resolveType(attr->getTypeRepr());
 
   // We always require the type to resolve to a nominal type.
-  Type type = attr->getTypeLoc().getType();
   if (!type->getAnyNominal()) {
     assert(ctx.Diags.hadAnyError());
-    return Type();
+    return ErrorType::get(ctx);
   }
 
   return type;

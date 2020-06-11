@@ -73,6 +73,8 @@ static unsigned toStableSILLinkage(SILLinkage linkage) {
 static unsigned toStableVTableEntryKind(SILVTable::Entry::Kind kind) {
   switch (kind) {
   case SILVTable::Entry::Kind::Normal: return SIL_VTABLE_ENTRY_NORMAL;
+  case SILVTable::Entry::Kind::NormalNonOverridden:
+    return SIL_VTABLE_ENTRY_NORMAL_NON_OVERRIDDEN;
   case SILVTable::Entry::Kind::Inherited: return SIL_VTABLE_ENTRY_INHERITED;
   case SILVTable::Entry::Kind::Override: return SIL_VTABLE_ENTRY_OVERRIDE;
   }
@@ -2164,8 +2166,11 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     auto *dfi = cast<DifferentiableFunctionInst>(&SI);
     SmallVector<ValueID, 4> trailingInfo;
     auto *paramIndices = dfi->getParameterIndices();
-    for (unsigned idx : paramIndices->getIndices())
-      trailingInfo.push_back(idx);
+    for (unsigned i : paramIndices->getIndices())
+      trailingInfo.push_back(i);
+    auto *resultIndices = dfi->getResultIndices();
+    for (unsigned i : resultIndices->getIndices())
+      trailingInfo.push_back(i);
     for (auto &op : dfi->getAllOperands()) {
       auto val = op.get();
       trailingInfo.push_back(S.addTypeRef(val->getType().getASTType()));
@@ -2175,7 +2180,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     SILInstDifferentiableFunctionLayout::emitRecord(
         Out, ScratchRecord,
         SILAbbrCodes[SILInstDifferentiableFunctionLayout::Code],
-        paramIndices->getCapacity(), dfi->hasDerivativeFunctions(),
+        paramIndices->getCapacity(), resultIndices->getCapacity(),
+        paramIndices->getNumIndices(), dfi->hasDerivativeFunctions(),
         trailingInfo);
     break;
   }
@@ -2653,10 +2659,10 @@ void SILSerializer::writeSILBlock(const SILModule *SILMod) {
   // Go through all SILVTables in SILMod and write them if we should
   // serialize everything.
   // FIXME: Resilience: could write out vtable for fragile classes.
-  for (const SILVTable &vt : SILMod->getVTables()) {
-    if ((ShouldSerializeAll || vt.isSerialized()) &&
-        SILMod->shouldSerializeEntitiesAssociatedWithDeclContext(vt.getClass()))
-      writeSILVTable(vt);
+  for (const auto &vt : SILMod->getVTables()) {
+    if ((ShouldSerializeAll || vt->isSerialized()) &&
+        SILMod->shouldSerializeEntitiesAssociatedWithDeclContext(vt->getClass()))
+      writeSILVTable(*vt);
   }
   
   // Write out property descriptors.
