@@ -903,6 +903,11 @@ void Serializer::writeHeader(const SerializationOptions &options) {
         PrivateImports.emit(ScratchRecord);
       }
 
+      if (M->isImplicitDynamicEnabled()) {
+        options_block::IsImplicitDynamicEnabledLayout ImplicitDynamic(Out);
+        ImplicitDynamic.emit(ScratchRecord);
+      }
+
       if (M->getResilienceStrategy() != ResilienceStrategy::Default) {
         options_block::ResilienceStrategyLayout Strategy(Out);
         Strategy.emit(ScratchRecord, unsigned(M->getResilienceStrategy()));
@@ -2383,9 +2388,9 @@ class Serializer::DeclSerializer : public DeclVisitor<DeclSerializer> {
     case DAK_Custom: {
       auto abbrCode = S.DeclTypeAbbrCodes[CustomDeclAttrLayout::Code];
       auto theAttr = cast<CustomAttr>(DA);
-      CustomDeclAttrLayout::emitRecord(
-        S.Out, S.ScratchRecord, abbrCode, theAttr->isImplicit(),
-        S.addTypeRef(theAttr->getTypeLoc().getType()));
+      CustomDeclAttrLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
+                                       theAttr->isImplicit(),
+                                       S.addTypeRef(theAttr->getType()));
       return;
     }
 
@@ -2792,7 +2797,7 @@ class Serializer::DeclSerializer : public DeclVisitor<DeclSerializer> {
     // its overrides after they've been compiled: if the declaration is '@objc'
     // and 'dynamic'. In that case, all accesses to the method or property will
     // go through the Objective-C method tables anyway.
-    if (overridden->hasClangNode() || overridden->isObjCDynamic())
+    if (overridden->hasClangNode() || overridden->shouldUseObjCDispatch())
       return false;
     return true;
   }
@@ -3862,6 +3867,17 @@ static uint8_t getRawStableResultConvention(swift::ResultConvention rc) {
   llvm_unreachable("bad result convention kind");
 }
 
+/// Translate from AST SILResultDifferentiability enum to the Serialization enum
+/// values, which are guaranteed to be stable.
+static uint8_t
+getRawSILResultDifferentiability(swift::SILResultDifferentiability pd) {
+  switch (pd) {
+  SIMPLE_CASE(SILResultDifferentiability, DifferentiableOrNotApplicable)
+  SIMPLE_CASE(SILResultDifferentiability, NotDifferentiable)
+  }
+  llvm_unreachable("bad result differentiability kind");
+}
+
 #undef SIMPLE_CASE
 
 /// Find the typealias given a builtin type.
@@ -4174,6 +4190,9 @@ public:
       variableData.push_back(S.addTypeRef(result.getInterfaceType()));
       unsigned conv = getRawStableResultConvention(result.getConvention());
       variableData.push_back(TypeID(conv));
+      if (fnTy->isDifferentiable())
+        variableData.push_back(TypeID(
+            getRawSILResultDifferentiability(result.getDifferentiability())));
     }
     if (fnTy->hasErrorResult()) {
       auto abResult = fnTy->getErrorResult();
