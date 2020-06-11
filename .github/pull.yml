@@ -1,8 +1,5 @@
 version: "1"
 rules:
-  - base: swiftwasm
-    upstream: master
-    mergeMethod: merge
   - base: swiftwasm-host
     upstream: master
     mergeMethod: merge
