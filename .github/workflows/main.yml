@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: linux-installable
-          path: ../swift-wasm-DEVELOPMENT-SNAPSHOT-ubuntu18.04.tar.gz
+          path: ../swift-wasm-host-DEVELOPMENT-SNAPSHOT-ubuntu18.04.tar.gz
 
   macos_build:
     timeout-minutes: 0
@@ -61,5 +61,5 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: macos-installable
-          path: ../swift-wasm-DEVELOPMENT-SNAPSHOT-osx.tar.gz
+          path: ../swift-wasm-host-DEVELOPMENT-SNAPSHOT-osx.tar.gz
  
