@@ -3,7 +3,7 @@ rules:
   - base: swiftwasm
     upstream: master
     mergeMethod: merge
-- base: swiftwasm-host
+  - base: swiftwasm-host
     upstream: master
     mergeMethod: merge
   - base: master
