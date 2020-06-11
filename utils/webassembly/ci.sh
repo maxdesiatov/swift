@@ -23,17 +23,3 @@ export SCCACHE_CACHE_SIZE="50G"
 export SCCACHE_DIR="$SOURCE_PATH/build-cache"
 
 $BUILD_SCRIPT
-
-if [[ "$(uname)" == "Darwin" ]]; then
-  # workaround: host target test directory is necessary to use run-test
-  mkdir -p $BUILD_DIR/swift-macosx-x86_64/test-macosx-x86_64
-fi
-
-$RUN_TEST_BIN --build-dir $BUILD_DIR --target wasi-wasm32 test/stdlib/
-
-if [[ "$(uname)" == "Linux" ]]; then
-  echo "Skip running test suites for Linux"
-else
-  # Run test but ignore failure temporarily
-  $BUILD_SCRIPT -t || true
-fi
