@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -xe
-repository='swiftwasm/swift'
+repository='MaxDesiatov/swift'
 workflow_name='main.yml'
 branch=$1
 
