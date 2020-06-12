@@ -15,13 +15,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "CSFix.h"
 #include "CSDiagnostics.h"
+#include "CSFix.h"
 #include "ConstraintSystem.h"
 #include "swift/AST/ExistentialLayout.h"
 #include "swift/AST/GenericEnvironment.h"
 #include "swift/AST/GenericSignature.h"
 #include "swift/AST/Initializer.h"
+#include "swift/AST/NameLookupRequests.h"
 #include "swift/AST/ParameterList.h"
 #include "swift/AST/PropertyWrappers.h"
 #include "swift/AST/ProtocolConformance.h"
@@ -1322,6 +1323,7 @@ ConstraintSystem::matchTupleTypes(TupleType *tuple1, TupleType *tuple2,
   case ConstraintKind::FunctionInput:
   case ConstraintKind::FunctionResult:
   case ConstraintKind::OneWayEqual:
+  case ConstraintKind::OneWayBindParam:
   case ConstraintKind::DefaultClosureType:
     llvm_unreachable("Not a conversion");
   }
@@ -1387,6 +1389,7 @@ static bool matchFunctionRepresentations(FunctionTypeRepresentation rep1,
   case ConstraintKind::FunctionInput:
   case ConstraintKind::FunctionResult:
   case ConstraintKind::OneWayEqual:
+  case ConstraintKind::OneWayBindParam:
   case ConstraintKind::DefaultClosureType:
     return false;
   }
@@ -1548,7 +1551,7 @@ static bool fixMissingArguments(ConstraintSystem &cs, ASTNode anchor,
 
       // Something like `foo { x in }` or `foo { $0 }`
       if (auto *closure = getAsExpr<ClosureExpr>(anchor)) {
-        closure->forEachChildExpr([&](Expr *expr) -> Expr * {
+        forEachExprInConstraintSystem(closure, [&](Expr *expr) -> Expr * {
           if (auto *UDE = dyn_cast<UnresolvedDotExpr>(expr)) {
             if (!isParam(UDE->getBase()))
               return expr;
@@ -1699,6 +1702,7 @@ ConstraintSystem::matchFunctionTypes(FunctionType *func1, FunctionType *func2,
   case ConstraintKind::FunctionInput:
   case ConstraintKind::FunctionResult:
   case ConstraintKind::OneWayEqual:
+  case ConstraintKind::OneWayBindParam:
   case ConstraintKind::DefaultClosureType:
     llvm_unreachable("Not a relational constraint");
   }
@@ -3043,11 +3047,12 @@ bool ConstraintSystem::repairFailures(
     // default values, let's see whether error is related to missing
     // explicit call.
     if (fnType->getNumParams() > 0) {
-      auto anchor = simplifyLocatorToAnchor(getConstraintLocator(locator));
-      if (!anchor.is<Expr *>())
+      auto *loc = getConstraintLocator(locator);
+      auto *anchor = getAsExpr(simplifyLocatorToAnchor(loc));
+      if (!anchor)
         return false;
 
-      auto overload = findSelectedOverloadFor(getAsExpr(anchor));
+      auto overload = findSelectedOverloadFor(anchor);
       if (!(overload && overload->choice.isDecl()))
         return false;
 
@@ -4406,6 +4411,7 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
     case ConstraintKind::FunctionInput:
     case ConstraintKind::FunctionResult:
     case ConstraintKind::OneWayEqual:
+    case ConstraintKind::OneWayBindParam:
     case ConstraintKind::DefaultClosureType:
       llvm_unreachable("Not a relational constraint");
     }
@@ -6928,6 +6934,54 @@ ConstraintSystem::SolutionKind ConstraintSystem::simplifyMemberConstraint(
       return recordFix(fix) ? SolutionKind::Error : SolutionKind::Solved;
     }
 
+    // If base is an archetype or metatype of archetype, check for an unintended
+    // extra generic parameter.
+    if (auto archetype =
+            baseTy->getMetatypeInstanceType()->getAs<ArchetypeType>()) {
+      if (auto genericTy =
+              archetype->mapTypeOutOfContext()->getAs<GenericTypeParamType>()) {
+        for (auto param :
+             archetype->getGenericEnvironment()->getGenericParams()) {
+          // Find a param at the same depth and one index past the type we're
+          // dealing with
+          if (param->getDepth() != genericTy->getDepth() ||
+              param->getIndex() != genericTy->getIndex() + 1)
+            continue;
+          auto paramDecl = param->getDecl();
+          if (!paramDecl)
+            continue;
+
+          auto descriptor = UnqualifiedLookupDescriptor(
+              DeclNameRef(param->getName()),
+              paramDecl->getDeclContext()->getParentForLookup(),
+              paramDecl->getStartLoc(),
+              UnqualifiedLookupFlags::KnownPrivate |
+                  UnqualifiedLookupFlags::TypeLookup);
+          auto lookup = evaluateOrDefault(
+              Context.evaluator, UnqualifiedLookupRequest{descriptor}, {});
+          for (auto &result : lookup) {
+            if (auto proto =
+                    dyn_cast_or_null<ProtocolDecl>(result.getValueDecl())) {
+              auto result =
+                  baseTy->is<MetatypeType>()
+                      ? solveWithNewBaseOrName(ExistentialMetatypeType::get(
+                                                   proto->getDeclaredType()),
+                                               member)
+                      : solveWithNewBaseOrName(proto->getDeclaredType(),
+                                               member);
+              if (result == SolutionKind::Solved)
+                return recordFix(
+                           DefineMemberBasedOnUnintendedGenericParam::create(
+                               *this, baseTy, member, param->getName(),
+                               locator))
+                           ? SolutionKind::Error
+                           : SolutionKind::Solved;
+            }
+          }
+        }
+      }
+    }
+
     if (auto *funcType = baseTy->getAs<FunctionType>()) {
       // We can't really suggest anything useful unless
       // function takes no arguments, otherwise it
@@ -7121,9 +7175,16 @@ ConstraintSystem::simplifyOneWayConstraint(
     return SolutionKind::Solved;
   }
 
-  // Translate this constraint into a one-way binding constraint.
-  return matchTypes(first, secondSimplified, ConstraintKind::Equal, flags,
-                    locator);
+  // Translate this constraint into an equality or bind-parameter constraint,
+  // as appropriate.
+  if (kind == ConstraintKind::OneWayEqual) {
+    return matchTypes(first, secondSimplified, ConstraintKind::Equal, flags,
+                      locator);
+  }
+
+  assert(kind == ConstraintKind::OneWayBindParam);
+  return matchTypes(
+      secondSimplified, first, ConstraintKind::BindParam, flags, locator);
 }
 
 static Type getFunctionBuilderTypeFor(ConstraintSystem &cs, unsigned paramIdx,
@@ -7175,12 +7236,27 @@ bool ConstraintSystem::resolveClosure(TypeVariableType *typeVar,
 
     Type internalType;
 
+    bool oneWayConstraints =
+      getASTContext().TypeCheckerOpts.EnableOneWayClosureParameters;
     if (paramList->get(i)->getTypeRepr()) {
       // Internal type is the type used in the body of the closure,
       // so "external" type translates to it as follows:
       //  - `Int...` -> `[Int]`,
       //  - `inout Int` -> `@lvalue Int`.
       internalType = param.getParameterType();
+
+      // When there are type variables in the type and we have enabled
+      // one-way constraints, create a fresh type variable to handle the
+      // binding.
+      if (oneWayConstraints && internalType->hasTypeVariable()) {
+        auto *paramLoc =
+            getConstraintLocator(closure, LocatorPathElt::TupleElement(i));
+        auto *typeVar = createTypeVariable(paramLoc, TVO_CanBindToLValue |
+                                                         TVO_CanBindToNoEscape);
+        addConstraint(
+            ConstraintKind::OneWayBindParam, typeVar, internalType, paramLoc);
+        internalType = typeVar;
+      }
     } else {
       auto *paramLoc =
           getConstraintLocator(closure, LocatorPathElt::TupleElement(i));
@@ -7194,7 +7270,13 @@ bool ConstraintSystem::resolveClosure(TypeVariableType *typeVar,
           param.isVariadic() ? ArraySliceType::get(typeVar) : Type(typeVar);
 
       auto externalType = param.getOldType();
-      addConstraint(ConstraintKind::BindParam, externalType, typeVar, paramLoc);
+      if (oneWayConstraints) {
+        addConstraint(
+            ConstraintKind::OneWayBindParam, typeVar, externalType, paramLoc);
+      } else {
+        addConstraint(
+            ConstraintKind::BindParam, externalType, typeVar, paramLoc);
+      }
     }
 
     setType(paramList->get(i), internalType);
@@ -9397,7 +9479,7 @@ bool ConstraintSystem::recordFix(ConstraintFix *fix, unsigned impact) {
 
   bool found = false;
   if (auto *expr = getAsExpr(anchor)) {
-    expr->forEachChildExpr([&](Expr *subExpr) -> Expr * {
+    forEachExprInConstraintSystem(expr, [&](Expr *subExpr) -> Expr * {
       found |= anchors.count(subExpr);
       return subExpr;
     });
@@ -9759,6 +9841,7 @@ ConstraintSystem::addConstraintImpl(ConstraintKind kind, Type first,
                                                subflags, locator);
 
   case ConstraintKind::OneWayEqual:
+  case ConstraintKind::OneWayBindParam:
     return simplifyOneWayConstraint(kind, first, second, subflags, locator);
 
   case ConstraintKind::ValueMember:
@@ -10271,6 +10354,7 @@ ConstraintSystem::simplifyConstraint(const Constraint &constraint) {
     return SolutionKind::Unsolved;
 
   case ConstraintKind::OneWayEqual:
+  case ConstraintKind::OneWayBindParam:
     return simplifyOneWayConstraint(constraint.getKind(),
                                     constraint.getFirstType(),
                                     constraint.getSecondType(),

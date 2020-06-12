@@ -899,6 +899,14 @@ public:
   DebugValueAddrInst *createDebugValueAddr(SILLocation Loc, SILValue src,
                                            SILDebugVariable Var);
 
+  /// Create a debug_value_addr if \p src is an address; a debug_value if not.
+  SILInstruction *emitDebugDescription(SILLocation Loc, SILValue src,
+                                       SILDebugVariable Var) {
+    if (src->getType().isAddress())
+      return createDebugValueAddr(Loc, src, Var);
+    return createDebugValue(Loc, src, Var);
+  }
+
 #define NEVER_LOADABLE_CHECKED_REF_STORAGE(Name, ...) \
   Load##Name##Inst *createLoad##Name(SILLocation Loc, \
                                      SILValue src, \
@@ -2179,10 +2187,11 @@ public:
   //===--------------------------------------------------------------------===//
 
   DifferentiableFunctionInst *createDifferentiableFunction(
-      SILLocation Loc, IndexSubset *ParameterIndices, SILValue OriginalFunction,
+      SILLocation Loc, IndexSubset *ParameterIndices,
+      IndexSubset *ResultIndices, SILValue OriginalFunction,
       Optional<std::pair<SILValue, SILValue>> JVPAndVJPFunctions = None) {
     return insert(DifferentiableFunctionInst::create(
-        getModule(), getSILDebugLocation(Loc), ParameterIndices,
+        getModule(), getSILDebugLocation(Loc), ParameterIndices, ResultIndices,
         OriginalFunction, JVPAndVJPFunctions, hasOwnership()));
   }
 

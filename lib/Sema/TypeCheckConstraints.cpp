@@ -1294,15 +1294,13 @@ namespace {
     }
 
     std::pair<bool, Stmt *> walkToStmtPre(Stmt *stmt) override {
-      // Never walk into statements.
-      return { false, stmt };
+      return { true, stmt };
     }
   };
 } // end anonymous namespace
 
 /// Perform prechecking of a ClosureExpr before we dive into it.  This returns
-/// true for single-expression closures, where we want the body to be considered
-/// part of this larger expression.
+/// true when we want the body to be considered part of this larger expression.
 bool PreCheckExpression::walkToClosureExprPre(ClosureExpr *closure) {
   auto *PL = closure->getParameters();
 
@@ -1915,34 +1913,37 @@ Expr *PreCheckExpression::simplifyTypeConstructionWithLiteralArg(Expr *E) {
   if (!protocol)
     return nullptr;
 
-  TypeLoc typeLoc;
+  Type castTy;
   if (auto precheckedTy = typeExpr->getInstanceType()) {
-    typeLoc = TypeLoc(typeExpr->getTypeRepr(), precheckedTy);
+    castTy = precheckedTy;
   } else {
-    TypeResolutionOptions options(TypeResolverContext::InExpression);
-    options |= TypeResolutionFlags::AllowUnboundGenerics;
+    const auto options =
+        TypeResolutionOptions(TypeResolverContext::InExpression) |
+        TypeResolutionFlags::AllowUnboundGenerics |
+        TypeResolutionFlags::SilenceErrors;
 
     auto result = TypeResolution::forContextual(DC, options)
                       .resolveType(typeExpr->getTypeRepr());
     if (result->hasError())
       return nullptr;
-    typeLoc = TypeLoc{typeExpr->getTypeRepr(), result};
+    castTy = result;
   }
 
-  if (!typeLoc.getType() || !typeLoc.getType()->getAnyNominal())
+  if (!castTy || !castTy->getAnyNominal())
     return nullptr;
 
   // Don't bother to convert deprecated selector syntax.
   if (auto selectorTy = getASTContext().getSelectorType()) {
-    if (typeLoc.getType()->isEqual(selectorTy))
+    if (castTy->isEqual(selectorTy))
       return nullptr;
   }
 
-  auto *NTD = typeLoc.getType()->getAnyNominal();
   SmallVector<ProtocolConformance *, 2> conformances;
-  return NTD->lookupConformance(DC->getParentModule(), protocol, conformances)
+  return castTy->getAnyNominal()->lookupConformance(DC->getParentModule(),
+                                                    protocol, conformances)
              ? CoerceExpr::forLiteralInit(getASTContext(), argExpr,
-                                          call->getSourceRange(), typeLoc)
+                                          call->getSourceRange(),
+                                          typeExpr->getTypeRepr())
              : nullptr;
 }
 
@@ -3050,9 +3051,9 @@ void ConstraintSystem::print(raw_ostream &out, Expr *E) const {
       return getType(E);
     return Type();
   };
-  auto getTypeOfTypeLoc = [&](TypeLoc &TL) -> Type {
-    if (hasType(TL))
-      return getType(TL);
+  auto getTypeOfTypeRepr = [&](TypeRepr *TR) -> Type {
+    if (hasType(TR))
+      return getType(TR);
     return Type();
   };
   auto getTypeOfKeyPathComponent = [&](KeyPathExpr *KP, unsigned I) -> Type {
@@ -3061,7 +3062,7 @@ void ConstraintSystem::print(raw_ostream &out, Expr *E) const {
     return Type();
   };
 
-  E->dump(out, getTypeOfExpr, getTypeOfTypeLoc, getTypeOfKeyPathComponent);
+  E->dump(out, getTypeOfExpr, getTypeOfTypeRepr, getTypeOfKeyPathComponent);
 }
 
 void ConstraintSystem::print(raw_ostream &out) const {
@@ -3247,6 +3248,11 @@ CheckedCastKind TypeChecker::typeCheckCheckedCast(Type fromType,
                                                   SourceLoc diagLoc,
                                                   Expr *fromExpr,
                                                   SourceRange diagToRange) {
+  // Determine whether we should suppress diagnostics.
+  const bool suppressDiagnostics = contextKind == CheckedCastContextKind::None;
+  assert((suppressDiagnostics || diagLoc.isValid()) &&
+         "diagnostics require a valid source location");
+
   SourceRange diagFromRange;
   if (fromExpr)
     diagFromRange = fromExpr->getSourceRange();
@@ -3270,9 +3276,6 @@ CheckedCastKind TypeChecker::typeCheckCheckedCast(Type fromType,
 
   Type origFromType = fromType;
   Type origToType = toType;
-
-  // Determine whether we should suppress diagnostics.
-  bool suppressDiagnostics = (contextKind == CheckedCastContextKind::None);
 
   auto &diags = dc->getASTContext().Diags;
   bool optionalToOptionalCast = false;
@@ -3708,9 +3711,11 @@ CheckedCastKind TypeChecker::typeCheckCheckedCast(Type fromType,
   else
     fromRequiresClass = fromType->mayHaveSuperclass();
   
-  // Casts between protocol metatypes only succeed if the type is existential.
+  // Casts between metatypes only succeed if none of the types are existentials
+  // or if one is an existential and the other is a generic type because there
+  // may be protocol conformances unknown at compile time.
   if (metatypeCast) {
-    if (toExistential || fromExistential)
+    if ((toExistential || fromExistential) && !(fromArchetype || toArchetype))
       return failed();
   }
 
@@ -4060,4 +4065,31 @@ HasDynamicCallableAttributeRequest::evaluate(Evaluator &evaluator,
 
 bool swift::shouldTypeCheckInEnclosingExpression(ClosureExpr *expr) {
   return expr->hasSingleExpressionBody();
+}
+
+void swift::forEachExprInConstraintSystem(
+    Expr *expr, llvm::function_ref<Expr *(Expr *)> callback) {
+  struct ChildWalker : ASTWalker {
+    llvm::function_ref<Expr *(Expr *)> callback;
+
+    ChildWalker(llvm::function_ref<Expr *(Expr *)> callback)
+    : callback(callback) {}
+
+    std::pair<bool, Expr *> walkToExprPre(Expr *E) override {
+      if (auto closure = dyn_cast<ClosureExpr>(E)) {
+        if (!shouldTypeCheckInEnclosingExpression(closure))
+          return { false, callback(E) };
+      }
+      return { true, callback(E) };
+    }
+
+    std::pair<bool, Pattern*> walkToPatternPre(Pattern *P) override {
+      return { false, P };
+    }
+    bool walkToDeclPre(Decl *D) override { return false; }
+    bool walkToTypeReprPre(TypeRepr *T) override { return false; }
+    bool walkToTypeLocPre(TypeLoc &TL) override { return false; }
+  };
+
+  expr->walk(ChildWalker(callback));
 }
