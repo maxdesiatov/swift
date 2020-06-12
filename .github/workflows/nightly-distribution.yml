@@ -7,10 +7,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v1
-      - run: ./utils/webassembly/distribute-latest-toolchain.sh swiftwasm DEVELOPMENT
+      - run: ./utils/webassembly/distribute-latest-toolchain.sh swiftwasm-host host-DEVELOPMENT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.ref == 'refs/heads/swiftwasm'
-      - run: ./utils/webassembly/distribute-latest-toolchain.sh swiftwasm-release/5.3 5.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.ref == 'refs/heads/swiftwasm-host'
