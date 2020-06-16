@@ -88,20 +88,20 @@ download_artifact macos-installable
 unzip linux-installable.zip
 unzip macos-installable.zip
 
-toolchain_name=$(basename $(tar tfz swift-wasm-$2-SNAPSHOT-linux.tar.gz | head -n1))
+toolchain_name=$(basename $(tar tfz swift-wasm-$2-SNAPSHOT-ubuntu18.04.tar.gz | head -n1))
 
 if is_released $toolchain_name; then
   echo "Latest toolchain $toolchain_name has been already released"
   exit 0
 fi
 
-cp swift-wasm-$2-SNAPSHOT-linux.tar.gz "$toolchain_name-linux.tar.gz"
+cp swift-wasm-$2-SNAPSHOT-linux.tar.gz "$toolchain_name-ubuntu18.04.tar.gz"
 cp swift-wasm-$2-SNAPSHOT-osx.tar.gz "$toolchain_name-osx.tar.gz"
 
 create_tag $toolchain_name $head_sha
 release_id=$(create_release $toolchain_name $toolchain_name $head_sha)
 
 upload_tarball $release_id "$toolchain_name-osx.tar.gz"
-upload_tarball $release_id "$toolchain_name-linux.tar.gz"
+upload_tarball $release_id "$toolchain_name-ubuntu18.04.tar.gz"
 
 popd
